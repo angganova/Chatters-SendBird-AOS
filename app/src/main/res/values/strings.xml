@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Chatters</string>
+    <string name="APP_ID">792F2D50-FA8D-4691-95B8-9398815DF220</string>
+    <string name="hint_write">Tulis Pesan . . .</string>
+</resources>

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                                                   xmlns:app="http://schemas.android.com/apk/res-auto"
+                                                   android:orientation="vertical"
+                                                   android:layout_width="match_parent"
+                                                   android:layout_height="match_parent" android:id="@+id/CLFRoot"
+                                                   android:background="@color/bluePrimary">
+
+    <EditText
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:ems="10"
+            android:id="@+id/etID" android:inputType="textPersonName" android:layout_marginTop="8dp"
+            app:layout_constraintTop_toTopOf="parent" android:layout_marginEnd="32dp"
+            app:layout_constraintEnd_toEndOf="parent" android:layout_marginStart="32dp"
+            app:layout_constraintStart_toStartOf="parent" app:layout_constraintHorizontal_bias="0.5"
+            app:layout_constraintBottom_toTopOf="@+id/btLogin"
+            app:layout_constraintVertical_chainStyle="packed" android:background="@drawable/vrc_white10"
+            android:padding="16dp" android:hint="ID / Email" android:elevation="3dp" android:imeOptions="actionDone"/>
+    <Button
+            android:text="LOGIN"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content" android:id="@+id/btLogin" android:layout_marginBottom="8dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/etID" app:layout_constraintHorizontal_bias="0.5"
+            android:layout_marginTop="16dp" android:background="@drawable/vrc_white10" android:elevation="3dp"
+            android:layout_marginEnd="32dp" android:layout_marginStart="32dp"/>
+</androidx.constraintlayout.widget.ConstraintLayout>
