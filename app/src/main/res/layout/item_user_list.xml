@@ -16,10 +16,37 @@
     <TextView
             android:text="TextView"
             android:layout_width="0dp"
-            android:layout_height="wrap_content" android:id="@+id/tvNickname" app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginEnd="8dp" android:layout_marginTop="32dp" app:layout_constraintTop_toTopOf="parent"
-            android:layout_marginBottom="32dp" app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toEndOf="@+id/ivPP" android:layout_marginStart="8dp"/>
+            android:layout_height="wrap_content" android:id="@+id/tvNickname"
+            android:layout_marginEnd="8dp" app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toEndOf="@+id/ivPP" android:layout_marginStart="8dp"
+            app:layout_constraintEnd_toStartOf="@+id/ivOpt" app:layout_constraintHorizontal_bias="0.5"
+            app:layout_constraintBottom_toTopOf="@+id/tvLastSeen" android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp"/>
+    <TextView
+            android:text="TextView"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content" android:id="@+id/tvLastSeen" android:layout_marginBottom="16dp"
+            app:layout_constraintEnd_toStartOf="@+id/ivOpt"
+            android:layout_marginEnd="8dp" app:layout_constraintStart_toEndOf="@+id/ivPP"
+            android:layout_marginStart="8dp" app:layout_constraintTop_toBottomOf="@+id/tvNickname"
+            app:layout_constraintHorizontal_bias="0.5" app:layout_constraintBottom_toTopOf="@+id/view"
+            android:textColor="@color/gray_dop"/>
+    <ImageView
+            android:layout_width="0dp"
+            android:layout_height="0dp" app:srcCompat="@drawable/ic_add_friend_black"
+            android:id="@+id/ivAdd" app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent" app:layout_constraintDimensionRatio="1:1"
+            android:padding="16dp" android:layout_marginTop="8dp" android:layout_marginBottom="8dp"
+            android:layout_marginEnd="8dp"/>
+    <ImageView
+            android:layout_width="0dp"
+            android:layout_height="0dp" app:srcCompat="@drawable/ic_opt_black"
+            android:id="@+id/ivOpt" app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent" app:layout_constraintDimensionRatio="1:1"
+            android:padding="16dp" android:layout_marginTop="8dp" android:layout_marginBottom="8dp"
+            android:layout_marginEnd="8dp" android:background="@drawable/rip_round_trans" android:visibility="gone"/>
     <View
             android:layout_width="0dp"
             android:layout_height="2dp" android:id="@+id/view"

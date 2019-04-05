@@ -2,4 +2,9 @@
     <string name="app_name">Chatters</string>
     <string name="APP_ID">792F2D50-FA8D-4691-95B8-9398815DF220</string>
     <string name="hint_write">Tulis Pesan . . .</string>
+
+    <!-- Group Channel List -->
+    <string name="group_channel_list_file_message_text">%1$s has uploaded a file.</string>
+    <string name="err_chat_list">Error on Loading Chat List</string>
+    <string name="empty_chat_list">Chat List is empty</string>
 </resources>

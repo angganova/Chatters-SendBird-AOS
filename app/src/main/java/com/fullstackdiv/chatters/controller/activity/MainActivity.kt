@@ -1,69 +1,47 @@
 package com.fullstackdiv.chatters.controller.activity
 
+import android.animation.ArgbEvaluator
+import android.animation.ValueAnimator
+import android.content.Intent
 import android.os.Bundle
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.FragmentTransaction
-import com.fullstackdiv.chatters.*
-import com.fullstackdiv.chatters.controller.fragment.ChatDetailFragment
-import com.fullstackdiv.chatters.controller.fragment.LoginFragment
-import com.fullstackdiv.chatters.controller.fragment.main.ChatListFragment
-import com.fullstackdiv.chatters.controller.fragment.main.ContactListFragment
+import com.fullstackdiv.chatters.R
+import com.fullstackdiv.chatters.controller.fragment.main.ChannelListFragment
+import com.fullstackdiv.chatters.controller.fragment.main.FriendListFragment
+import com.fullstackdiv.chatters.controller.fragment.main.UserListFragment
+import com.fullstackdiv.chatters.helper.UserDefault
 import com.google.android.material.tabs.TabLayout
 import com.sendbird.android.*
 import com.sendbird.android.SendBird.ConnectHandler
-import com.sendbird.android.SendBird.UserInfoUpdateHandler
 import kotlinx.android.synthetic.main.activity_main.*
 import java.io.File
-import com.sendbird.android.GroupChannel
-
-
 
 
 class MainActivity : AppCompatActivity() {
     private lateinit var curFragment: Fragment
     lateinit var userDefault: UserDefault
 
+    var opt_menu = 0 // Default
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        setSupportActionBar(toolbar)
-        toolbar.title = ""
+        userDefault = UserDefault(applicationContext)
 
-        SendBird.init(getString(R.string.APP_ID), this)
-        userDefault = UserDefault(this)
+        toolbar.title = userDefault.nickname
+        setSupportActionBar(toolbar)
 
         setBaseView()
     }
 
     fun setBaseView(){
-        if (userDefault.isLoggedIn) connectServer()
-        else cFragmentNoBS(LoginFragment())
-
+        connectServer()
         setAct()
-    }
-
-    fun setAct(){
-        fabLogout.setOnClickListener {
-            userDefault.clean()
-            cFragmentNoBS(LoginFragment())
-        }
-
-        tab.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
-            override fun onTabReselected(p0: TabLayout.Tab?) {}
-            override fun onTabUnselected(p0: TabLayout.Tab?) {}
-
-            override fun onTabSelected(p0: TabLayout.Tab) {
-                when(p0.position){
-                    0 -> cFragmentNoBS(ChatListFragment())
-                    1 -> cFragmentNoBS(ContactListFragment())
-                }
-            }
-
-        })
     }
 
     /*Connection to Server*/
@@ -73,38 +51,71 @@ class MainActivity : AppCompatActivity() {
                 e.printStackTrace()
                 return@ConnectHandler
             }else{
-                cFragmentNoBS(ChatListFragment())
+                cFragmentNoBS(ChannelListFragment())
                 println("XXXASDF Logged User ID ${userDefault.userID}")
             }
         })
     }
 
-    fun disconnectServer(){
-        SendBird.disconnect {
-            // A current user is disconnected from SendBird server.
-        }
-    }
 
-    fun login(id: String){
-        SendBird.connect(id, ConnectHandler { user, e ->
-            if (e != null) {
-                // Error.
-                cFragmentNoBS(LoginFragment())
-                return@ConnectHandler
-            }else{
-                println("User ID ${user.userId}")
-                if (user.nickname.isNullOrBlank()){
-                    userDefault.userID = user.userId
-                    userDefault.isLoggedIn = true
-                    updateProfile(user.userId)
-                }else {
-                    userDefault.userID = user.userId
-                    userDefault.nickname = user.nickname
-                    userDefault.isLoggedIn = true
-                    cFragmentNoBS(ChatListFragment())
+    fun setAct(){
+        fabLogout.setOnClickListener {
+            SendBird.disconnect {}
+            userDefault.clean()
+            startActivity(Intent(this, LoginActivity::class.java))
+            finish()
+        }
+
+        tab.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+            override fun onTabReselected(p0: TabLayout.Tab?) {}
+            override fun onTabUnselected(p0: TabLayout.Tab?) {}
+
+            override fun onTabSelected(p0: TabLayout.Tab) {
+                when(p0.position){
+                    0 -> cFragmentNoBS(ChannelListFragment())
+                    1 -> cFragmentNoBS(FriendListFragment())
+                    2 -> cFragmentNoBS(UserListFragment())
                 }
             }
+
         })
+    }
+
+    fun setActBar(i: Int): Boolean{
+        if (opt_menu != 0) return false
+
+        opt_menu = i
+        toolbar.setNavigationIcon(R.drawable.ic_back_white)
+        toolbar.setNavigationOnClickListener {
+            setNormalActBar()
+        }
+
+        animColor(ContextCompat.getColor(this, R.color.colorPrimary),
+            ContextCompat.getColor(this, R.color.colorPrimaryDark))
+
+        invalidateOptionsMenu()
+
+        return true
+    }
+
+    fun setNormalActBar(){
+        opt_menu = 0
+
+        toolbar.title = userDefault.nickname
+        animColor(ContextCompat.getColor(this, R.color.colorPrimaryDark),
+            ContextCompat.getColor(this, R.color.colorPrimary))
+
+        invalidateOptionsMenu()
+        toolbar.navigationIcon = null
+    }
+
+    fun animColor(colorFrom:Int, colorTo:Int){
+        val colorAnim = ValueAnimator.ofObject(ArgbEvaluator(), colorFrom, colorTo)
+        colorAnim.duration = 250 // milliseconds
+        colorAnim.addUpdateListener { animator ->
+            CLMainRoot.setBackgroundColor(animator.animatedValue as Int)
+        }
+        colorAnim.start()
     }
 
     fun connectWithToken(id:String, token:String){
@@ -114,7 +125,6 @@ class MainActivity : AppCompatActivity() {
             }
         })
     }
-
 
 
     /*Channel Func*/
@@ -155,24 +165,9 @@ class MainActivity : AppCompatActivity() {
                     e.printStackTrace()
                     return@GroupChannelCreateHandler
                 }else{
-                    println("ASDFXXXX ${groupChannel.url}")
-                    println("ASDFXXXX ${groupChannel.memberCount}")
-                    cFragmentWithBS(ChatDetailFragment().newInstance(groupChannel.url))
-                }
-            })
-    }
-
-    fun openSingleCH(id:MutableList<String>){
-        GroupChannel.createChannelWithUserIds(id, true,
-            GroupChannel.GroupChannelCreateHandler { groupChannel, e ->
-                if (e != null) {
-                    // Error.
-                    e.printStackTrace()
-                    return@GroupChannelCreateHandler
-                }else{
-                    println("ASDFXXXX ${groupChannel.url}")
-                    println("ASDFXXXX ${groupChannel.memberCount}")
-                    cFragmentWithBS(ChatDetailFragment().newInstance(groupChannel.url))
+//                    println("ASDFXXXX ${groupChannel.url}")
+//                    println("ASDFXXXX ${groupChannel.memberCount}")
+//                    cFragmentWithBS(ChatDetailFragment().newInstance(groupChannel.url))
                 }
             })
     }
@@ -244,40 +239,6 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
-    /*User Action Function*/
-    fun blockUser(id:String){
-        // In case of blocking a user
-        SendBird.blockUserWithUserId(id, SendBird.UserBlockHandler { user, e ->
-            if (e != null) {    // Error.
-                return@UserBlockHandler
-            }
-        })
-
-    }
-
-    fun unblockUser(id:String){
-        // In case of unblocking a user
-        SendBird.unblockUserWithUserId(id, SendBird.UserUnblockHandler { e ->
-            if (e != null) {    // Error.
-                return@UserUnblockHandler
-            }
-        })
-    }
-
-    fun updateProfile(nickname:String, file: File? =null){
-        SendBird.updateCurrentUserInfoWithProfileImage(nickname, file,
-            UserInfoUpdateHandler { e ->
-                if (e != null) {
-                    // Error.
-                    sToast("Update user nickname failed")
-                    return@UserInfoUpdateHandler
-                }else{
-                    userDefault.nickname = nickname
-                    cFragmentNoBS(ChatListFragment())
-                }
-            })
-    }
-
     /*FRAGMENT CONTAINER FUN*/
     // Change Fragment Without Backstack
     fun cFragmentNoBS(fragment: Fragment) {
@@ -332,13 +293,6 @@ class MainActivity : AppCompatActivity() {
     }
     /*********************************************************************/
 
-    fun lToast(s: String){
-        Toast.makeText(this, s, Toast.LENGTH_LONG).show()
-    }
-
-    fun sToast(s: String){
-        Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
-    }
 
     fun hideLO(){
         fabLogout.hide()
