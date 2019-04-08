@@ -11,5 +11,7 @@ import com.sendbird.android.BaseChannel
 
 class test{
 
+    fun test(){
 
+    }
 }

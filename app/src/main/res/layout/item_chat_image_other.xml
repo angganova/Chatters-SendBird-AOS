@@ -17,7 +17,7 @@
             android:visibility="gone"/>
 
     <androidx.constraintlayout.widget.ConstraintLayout
-            android:id="@+id/CLChatLeft"
+            android:id="@+id/CLChat"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:background="@drawable/chat_white"
@@ -38,11 +38,11 @@
                 app:layout_constraintDimensionRatio="1:1" android:visibility="invisible"/>
         <ImageView
                 android:layout_width="0dp"
-                android:layout_height="0dp" android:id="@+id/ivBody"
+                android:layout_height="wrap_content" android:id="@+id/ivBody"
                 app:layout_constraintTop_toBottomOf="@+id/tvTitle" app:layout_constraintStart_toStartOf="parent"
                 android:layout_marginStart="8dp" app:layout_constraintEnd_toEndOf="parent"
                 android:layout_marginEnd="8dp" app:layout_constraintBottom_toTopOf="@+id/tvTime"
-                app:layout_constraintDimensionRatio="1:1"/>
+        />
         <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content" android:id="@+id/tvTitle"

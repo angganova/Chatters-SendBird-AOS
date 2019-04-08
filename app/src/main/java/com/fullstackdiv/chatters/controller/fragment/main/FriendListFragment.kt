@@ -10,13 +10,12 @@ import androidx.recyclerview.widget.DefaultItemAnimator
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.fullstackdiv.chatters.R
 import com.fullstackdiv.chatters.controller.activity.ChatDetailActivity
-import com.fullstackdiv.chatters.controller.activity.MainActivity
 import com.fullstackdiv.chatters.controller.fragment.main.adapter.UserAdapter
 import com.sendbird.android.FriendListQuery
 import com.sendbird.android.GroupChannel
 import com.sendbird.android.SendBird
 import com.sendbird.android.User
-import kotlinx.android.synthetic.main.base_rv.*
+import kotlinx.android.synthetic.main.fragment_base_rv.*
 
 
 /**
@@ -25,7 +24,7 @@ import kotlinx.android.synthetic.main.base_rv.*
 
 class FriendListFragment: Fragment(){
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-        return inflater.inflate(R.layout.base_rv, container, false)
+        return inflater.inflate(R.layout.fragment_base_rv, container, false)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {

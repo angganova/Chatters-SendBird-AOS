@@ -174,10 +174,9 @@ object FileUtils {
         downloadRequest.setTitle(fileName)
 
         // in order for this if to run, you must use the android 3.2 to compile your app
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
-            downloadRequest.allowScanningByMediaScanner()
-            downloadRequest.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-        }
+        downloadRequest.allowScanningByMediaScanner()
+        downloadRequest.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+
 
         downloadRequest.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
 

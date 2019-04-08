@@ -13,8 +13,7 @@ import com.fullstackdiv.chatters.controller.fragment.main.adapter.UserAdapter
 import com.sendbird.android.User
 import com.sendbird.android.UserListQuery
 import com.sendbird.android.SendBird
-import kotlinx.android.synthetic.main.base_rv.*
-import com.sendbird.android.GroupChannel
+import kotlinx.android.synthetic.main.fragment_base_rv.*
 
 
 /**
@@ -23,7 +22,7 @@ import com.sendbird.android.GroupChannel
 
 class UserListFragment: Fragment(){
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-        return inflater.inflate(R.layout.base_rv, container, false)
+        return inflater.inflate(R.layout.fragment_base_rv, container, false)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {

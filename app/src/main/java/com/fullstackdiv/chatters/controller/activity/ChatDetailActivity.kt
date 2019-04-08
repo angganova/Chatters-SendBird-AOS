@@ -3,6 +3,7 @@ package com.fullstackdiv.chatters.controller.activity
 import android.Manifest
 import android.animation.Animator
 import android.app.Activity
+import android.content.Context
 import android.content.DialogInterface
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -15,6 +16,8 @@ import android.text.TextWatcher
 import android.util.Log
 import android.view.*
 import android.view.inputmethod.EditorInfo
+import android.widget.Button
+import android.widget.ImageButton
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -24,6 +27,8 @@ import androidx.recyclerview.widget.DefaultItemAnimator
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.fullstackdiv.chatters.R
+import com.fullstackdiv.chatters.controller.activity.adapter.ChatDetailAdapter
+import com.fullstackdiv.chatters.controller.extension.FloatingView
 import com.fullstackdiv.chatters.helper.utils.PopUpUtils
 import com.fullstackdiv.chatters.helper.UserDefault
 import com.fullstackdiv.chatters.helper.utils.*
@@ -259,9 +264,10 @@ class ChatDetailActivity : AppCompatActivity() {
     // Set Base Action
     private fun setBaseAction(){
         fabSend.setOnClickListener {
-//            if (state_compose) sendMsg(etChat.text.toString())
-//            else toggleAttachMenu()
-            requestMedia()
+            if (state_compose) sendMsg(etChat.text.toString())
+            else toggleAttachMenu()
+//            else openDialog()
+//            requestMedia()
         }
 
         ivChBg.setOnClickListener { changeBackground() }
@@ -309,14 +315,6 @@ class ChatDetailActivity : AppCompatActivity() {
 
         adapterChat.setItemClickListener(object : ChatDetailAdapter.OnItemClickListener {
             override fun onUserMessageItemClick(message: UserMessage, position: Int) {
-                if (adapterChat.selection_state){
-                    if (adapterChat.isSelected(position)) {
-                        unSelectMsg(position)
-                        if (adapterChat.selectedCount() == 0) endSelection()
-                    } else selectMsg(position)
-
-                }
-
                 // Restore failed message and remove the failed message from list.
                 if (adapterChat.isFailedMessage(message)) {
                     retryFailedMessage(message)
@@ -326,7 +324,13 @@ class ChatDetailActivity : AppCompatActivity() {
                 // Message is sending. Do nothing on click event.
                 if (adapterChat.isTempMessage(message)) return
 
+                if (adapterChat.selection_state){
+                    if (adapterChat.isSelected(position)) {
+                        unSelectMsg(position)
+                        if (adapterChat.selectedCount() == 0) endSelection()
+                    } else selectMsg(position)
 
+                }
 
                 if (message.customType == adapterChat.URL_PREVIEW_CUSTOM_TYPE) {
                     try {
@@ -351,8 +355,13 @@ class ChatDetailActivity : AppCompatActivity() {
                 if (adapterChat.isTempMessage(message)) return
 
 
+                if(adapterChat.selection_state){
+                    if (adapterChat.isSelected(position)) {
+                        unSelectMsg(position)
+                        if (adapterChat.selectedCount() == 0) endSelection()
+                    } else selectMsg(position)
 
-                onFileMessageClicked(message)
+                }else onFileMessageClicked(message)
             }
         })
 
@@ -369,17 +378,45 @@ class ChatDetailActivity : AppCompatActivity() {
                 }
             }
 
-            override fun onFileMessageItemLongClick(message: FileMessage, position: Int) {}
-            override fun onAdminMessageItemLongClick(message: AdminMessage, position: Int) {}
+            override fun onFileMessageItemLongClick(message: FileMessage, position: Int) {
+                if (adapterChat.selection_state) {
+                    if (adapterChat.isSelected(position)) {
+                        unSelectMsg(position)
+                        if (adapterChat.selectedCount() == 0) endSelection()
+                    } else selectMsg(position)
+                } else {
+                    startSelection()
+                    selectMsg(position)
+                }
+            }
+            override fun onAdminMessageItemLongClick(message: AdminMessage, position: Int) {
+                if (adapterChat.selection_state) {
+                    if (adapterChat.isSelected(position)) {
+                        unSelectMsg(position)
+                        if (adapterChat.selectedCount() == 0) endSelection()
+                    } else selectMsg(position)
+                } else {
+                    startSelection()
+                    selectMsg(position)
+                }
+            }
         })
 
+
+        val attachmentIntent = Intent(this, RequestMediaActivity::class.java)
         // Attachment Menu button
         btDoc.setOnClickListener { requestMedia() }
         btCam.setOnClickListener { requestMedia() }
-        btGallery.setOnClickListener { requestFile(INTENT_REQ_GALLERY) }
+        btGallery.setOnClickListener {
+            attachmentIntent.putExtra("type", "Images")
+            startActivity(attachmentIntent)
+        }
         btAudio.setOnClickListener { requestMedia() }
         btLoc.setOnClickListener { requestMedia() }
-        btContact.setOnClickListener { requestMedia() }
+        btContact.setOnClickListener {
+            attachmentIntent.putExtra("type", "Contacts")
+            startActivity(attachmentIntent)
+        }
     }
 
 
@@ -472,6 +509,22 @@ class ChatDetailActivity : AppCompatActivity() {
             }
         }
     }
+
+    private fun openDialog() {
+//        val layoutInflater = getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
+
+        val inflater = LayoutInflater.from(this)
+        // inflate the custom popup layout
+        val view = inflater.inflate(R.layout.in_menu_attachment,
+            null)
+
+        val btDoc:ImageButton = view.findViewById(R.id.btDoc)
+        btDoc.setOnClickListener { FloatingView.dismissWindow() }
+
+        FloatingView.onShowPopup(this, view, etChat)
+    }
+
+
 
     // Toggle Attachment Menu
     fun toggleAttachMenu() {
@@ -619,18 +672,37 @@ class ChatDetailActivity : AppCompatActivity() {
     // Type File Message Clicked
     private fun onFileMessageClicked(message: FileMessage) {
         val type = message.type.toLowerCase()
-//        if (type.startsWith("image")) {
-//            val i = Intent(this, PhotoViewerActivity::class.java)
-//            i.putExtra("url", message.url)
-//            i.putExtra("type", message.type)
-//            startActivity(i)
-//        } else if (type.startsWith("video")) {
-//            val intent = Intent(this, MediaPlayerActivity::class.java)
-//            intent.putExtra("url", message.url)
-//            startActivity(intent)
-//        } else {
-//            showDownloadConfirmDialog(message)
-//        }
+        when {
+            type.startsWith("image") -> {
+                DialogUtils.sDialogImage(this, message.url)
+            }
+            type.startsWith("video") -> {
+//                val intent = Intent(this, MediaPlayerActivity::class.java)
+//                intent.putExtra("url", message.url)
+//                startActivity(intent)
+            }
+            else -> showDownloadConfirmDialog(message)
+        }
+    }
+
+
+    private fun showDownloadConfirmDialog(message: FileMessage) {
+        if (ContextCompat.checkSelfPermission(this,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            // If storage permissions are not granted, request permissions at run-time,
+            // as per < API 23 guidelines.
+            requestStoragePermissions()
+        } else {
+            DialogUtils.showDialog2(this, "Download file?", "Download",
+                DialogInterface.OnClickListener { dialog, which ->
+                    if (which == DialogInterface.BUTTON_POSITIVE) {
+                        FileUtils.downloadFile(this, message.url, message.name)
+                    }
+                })
+        }
+
     }
 
     private fun sendFileImage(uri: Uri){

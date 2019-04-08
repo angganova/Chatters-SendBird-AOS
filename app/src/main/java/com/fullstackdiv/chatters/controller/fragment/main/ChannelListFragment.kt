@@ -12,11 +12,10 @@ import com.fullstackdiv.chatters.R
 import com.fullstackdiv.chatters.controller.activity.ChatDetailActivity
 import com.fullstackdiv.chatters.controller.fragment.main.adapter.ChannelListAdapter
 import com.sendbird.android.*
-import kotlinx.android.synthetic.main.base_rv.*
+import kotlinx.android.synthetic.main.fragment_base_rv.*
 import com.sendbird.android.GroupChannel
 import com.fullstackdiv.chatters.controller.activity.MainActivity
 import com.fullstackdiv.chatters.helper.utils.PopUpUtils
-import com.sendbird.android.ConnectionManager
 import android.view.*
 import androidx.core.content.ContextCompat
 import com.fullstackdiv.chatters.helper.utils.DialogUtils
@@ -47,7 +46,7 @@ class ChannelListFragment: Fragment(){
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-        return inflater.inflate(R.layout.base_rv, container, false)
+        return inflater.inflate(R.layout.fragment_base_rv, container, false)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -315,23 +314,23 @@ class ChannelListFragment: Fragment(){
 
         Log.d("LIFECYCLE", "GroupChannelListFragment onPause()")
 
-        ConnectionManager.removeNetworkHandler(CON_HANDLER_ID)
+//        ConnectionManager.removeNetworkHandler(CON_HANDLER_ID)
         SendBird.removeChannelHandler(CH_HANDLER_ID)
     }
 
     override fun onResume() {
         super.onResume()
 
-        ConnectionManager.addNetworkHandler(CON_HANDLER_ID,
-            object : ConnectionManager.NetworkHandler() {
-                override fun onReconnected() {
-                    refreshData()
-                }
-            }
-        )
+//        ConnectionManager.addNetworkHandler(CON_HANDLER_ID,
+//            object : ConnectionManager.NetworkHandler() {
+//                override fun onReconnected() {
+//                    refreshData()
+//                }
+//            }
+//        )
 
         adapter.load()
-        getChannel(CH_QUERY_LIMIT)
+        if (adapter.data.size == 0) getChannel(CH_QUERY_LIMIT)
 
         setChannelHandler()
     }

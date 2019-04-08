@@ -5,6 +5,7 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.READ_CONTACTS"/>
 
     <application
             android:name=".helper.AppChatters"
@@ -14,6 +15,8 @@
             android:roundIcon="@mipmap/ic_launcher_round"
             android:supportsRtl="true"
             android:theme="@style/MyMaterialTheme.Base">
+        <activity android:name=".controller.activity.RequestMediaActivity">
+        </activity>
         <activity android:name=".controller.activity.LoginActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>

@@ -69,9 +69,9 @@ object ImageUtils {
     /**
      * Displays an image from a URL in an ImageView.
      */
-    @JvmOverloads
     fun displayImageFromUrl(context: Context, url: String?,
-                            imageView: ImageView, placeholderDrawable: Drawable?, listener: RequestListener<Drawable>? = null
+                            imageView: ImageView, placeholderDrawable: Drawable?,
+                            listener: RequestListener<Drawable>? = null
     ) {
         val myOptions = RequestOptions()
             .dontAnimate()
@@ -93,7 +93,6 @@ object ImageUtils {
         }
     }
 
-    @JvmOverloads
     fun displayRoundImageFromUrlWithoutCache(
         context: Context, url: String,
         imageView: ImageView, listener: RequestListener<Bitmap>? = null

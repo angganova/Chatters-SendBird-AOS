@@ -1,4 +1,4 @@
-package com.fullstackdiv.chatters.controller.activity
+package com.fullstackdiv.chatters.controller.activity.adapter
 
 import com.sendbird.android.FileMessage
 import com.sendbird.android.GroupChannel
@@ -28,7 +28,7 @@ import java.util.*
  * Created by Angga N P on 3/29/2019.
  */
 
-class ChatDetailAdapter(val mContext: Context) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+class ChatDetailAdapter(val context: Context) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     val URL_PREVIEW_CUSTOM_TYPE = "url_preview"
 
     private val VIEW_MY_TEXT = 99 // My Text Message
@@ -41,14 +41,14 @@ class ChatDetailAdapter(val mContext: Context) : RecyclerView.Adapter<RecyclerVi
     private val VIEW_OTHER_FILE_VIDEO = 22 // Other File Video
     private val VIEW_TYPE_ADMIN_MESSAGE = 11 // Admin / System Message
 
+    private var channel: GroupChannel? = null
     private val mFileMessageMap: HashMap<FileMessage, ProgressBar> = HashMap()
-    private var mChannel: GroupChannel? = null
     private val data: MutableList<BaseMessage> = ArrayList()
 
-    private var mItemClickListener: OnItemClickListener? = null
-    private var mItemLongClickListener: OnItemLongClickListener? = null
+    private var itemClickListener: OnItemClickListener? = null
+    private var itemLongClickListener: OnItemLongClickListener? = null
 
-    private val mFailedMessageIdList = arrayListOf<String>()
+    private val failedMessageList = arrayListOf<String>()
     private val mTempFileMessageUriTable = Hashtable<String, Uri>()
     private var isMessageListLoading: Boolean = false
     private var isSingle: Boolean = true
@@ -129,53 +129,49 @@ class ChatDetailAdapter(val mContext: Context) : RecyclerView.Adapter<RecyclerVi
         isFailedMessage = isFailedMessage(message)
 
         when (holder.itemViewType) {
-            VIEW_MY_TEXT -> (holder as MyUserMessageHolder).bind(
-                mContext, message as UserMessage, mChannel,
-                isContinuous, isNewDay, isTempMessage, isFailedMessage,
-                mItemClickListener, mItemLongClickListener, position
+            VIEW_MY_TEXT -> (holder as MyUserMessageHolder).bindMyText(
+                message as UserMessage, isContinuous, isNewDay, isTempMessage,
+                isFailedMessage, itemClickListener, itemLongClickListener, position
             )
-            VIEW_OTHER_TEXT -> (holder as OtherUserMessageHolder).bind(
-                mContext, message as UserMessage,
-                mChannel, isNewDay, isContinuous,
-                mItemClickListener, mItemLongClickListener, position
+            VIEW_OTHER_TEXT -> (holder as OtherUserMessageHolder).bindOthertext(
+                message as UserMessage, isNewDay, isContinuous,
+                itemClickListener, itemLongClickListener, position
             )
-            VIEW_TYPE_ADMIN_MESSAGE -> (holder as AdminMessageHolder).bind(
+            VIEW_TYPE_ADMIN_MESSAGE -> (holder as AdminMessageHolder).bindAdminMsg(
                 message as AdminMessage, isNewDay
             )
-            VIEW_MY_FILE -> (holder as MyFileMessageHolder).bind(
-                mContext, message as FileMessage,
-                position, mChannel, isNewDay,
+            VIEW_MY_FILE -> (holder as MyFileMessageHolder).bindMyFile(
+                message as FileMessage, position, isNewDay,
                 isTempMessage, isFailedMessage,
-                tempFileMessageUri, mItemClickListener
+                tempFileMessageUri, itemClickListener, itemLongClickListener
             )
-            VIEW_OTHER_FILE -> (holder as OtherFileMessageHolder).bind(
-                mContext, message as FileMessage,
-                position, mChannel, isNewDay,
-                isContinuous, mItemClickListener
+            VIEW_OTHER_FILE -> (holder as OtherFileMessageHolder).bindOtherFile(
+                message as FileMessage, position, isNewDay,
+                isContinuous, itemClickListener, itemLongClickListener
             )
-            VIEW_MY_FILE_IMAGE -> (holder as MyImageFileMessageHolder).bind(
-                mContext, message as FileMessage, position, mChannel,
-                isNewDay, isTempMessage, isFailedMessage,
-                tempFileMessageUri, mItemClickListener
+            VIEW_MY_FILE_IMAGE -> (holder as MyImageFileMessageHolder).bindMyImage(
+                message as FileMessage, position, isNewDay, isTempMessage, isFailedMessage,
+                tempFileMessageUri, itemClickListener, itemLongClickListener
             )
-            VIEW_OTHER_FILE_IMAGE -> (holder as OtherImageFileMessageHolder).bind(
-                mContext, message as FileMessage, mChannel, position,
-                isNewDay, isContinuous, mItemClickListener
+            VIEW_OTHER_FILE_IMAGE -> (holder as OtherImageFileMessageHolder).bindOtherImage(
+                message as FileMessage, position, isNewDay, isContinuous, itemClickListener,
+                itemLongClickListener
             )
             VIEW_MY_FILE_VIDEO -> (holder as MyVideoFileMessageHolder).bind(
-                mContext, message as FileMessage, position, mChannel, isNewDay,
-                isTempMessage, isFailedMessage, tempFileMessageUri, mItemClickListener
+                message as FileMessage, position, isNewDay, isTempMessage,
+                isFailedMessage, tempFileMessageUri, itemClickListener,
+                itemLongClickListener
             )
-            VIEW_OTHER_FILE_VIDEO -> (holder as OtherVideoFileMessageHolder).bind(
-                mContext, message as FileMessage, position, mChannel,
-                isNewDay, isContinuous, mItemClickListener
+            VIEW_OTHER_FILE_VIDEO -> (holder as OtherVideoFileMessageHolder).bindOtherVideo(
+                message as FileMessage, position, isNewDay, isContinuous,
+                itemClickListener, itemLongClickListener
             )
         }
     }
 
     fun load(channelUrl: String) {
 //        try {
-//            val appDir = File(mContext.cacheDir, SendBird.getApplicationId())
+//            val appDir = File(context.cacheDir, SendBird.getApplicationId())
 //            appDir.mkdirs()
 //
 //            val dataFile = File(appDir, TextUtils.generateMD5(SendBird.getCurrentUser().userId + channelUrl) + ".data")
@@ -183,7 +179,7 @@ class ChatDetailAdapter(val mContext: Context) : RecyclerView.Adapter<RecyclerVi
 //            val content = FileUtils.loadFromFile(dataFile)
 //            val dataArray = content.split("\n".toRegex()).dropLastWhile({ it.isEmpty() }).toTypedArray()
 //
-//            mChannel = GroupChannel.buildFromSerializedData(Base64.decode(dataArray[0], Base64.DEFAULT or Base64.NO_WRAP)) as GroupChannel?
+//            channel = GroupChannel.buildFromSerializedData(Base64.decode(dataArray[0], Base64.DEFAULT or Base64.NO_WRAP)) as GroupChannel?
 //
 //            // Reset message list, then add cached messages.
 //            data.clear()
@@ -207,9 +203,9 @@ class ChatDetailAdapter(val mContext: Context) : RecyclerView.Adapter<RecyclerVi
 //    fun save() {
 //        try {
 //            val sb = StringBuilder()
-//            if (mChannel != null) {
+//            if (channel != null) {
 //                // Convert current data into string.
-//                sb.append(Base64.getEncoder().encodeToString(mChannel!!.serialize(), Base64.DEFAULT or Base64.NO_WRAP))
+//                sb.append(Base64.getEncoder().encodeToString(channel!!.serialize(), Base64.DEFAULT or Base64.NO_WRAP))
 //                var message: BaseMessage? = null
 //                for (i in 0 until Math.min(data.size, 100)) {
 //                    message = data[i]
@@ -223,13 +219,13 @@ class ChatDetailAdapter(val mContext: Context) : RecyclerView.Adapter<RecyclerVi
 //                val md5 = TextUtils.generateMD5(data)
 //
 //                // Save the data into file.
-//                val appDir = File(mContext.cacheDir, SendBird.getApplicationId())
+//                val appDir = File(context.cacheDir, SendBird.getApplicationId())
 //                appDir.mkdirs()
 //
 //                val hashFile =
-//                    File(appDir, TextUtils.generateMD5(SendBird.getCurrentUser().userId + mChannel!!.url) + ".hash")
+//                    File(appDir, TextUtils.generateMD5(SendBird.getCurrentUser().userId + channel!!.url) + ".hash")
 //                val dataFile =
-//                    File(appDir, TextUtils.generateMD5(SendBird.getCurrentUser().userId + mChannel!!.url) + ".data")
+//                    File(appDir, TextUtils.generateMD5(SendBird.getCurrentUser().userId + channel!!.url) + ".data")
 //
 //                try {
 //                    val content = FileUtils.loadFromFile(hashFile)
@@ -286,7 +282,7 @@ class ChatDetailAdapter(val mContext: Context) : RecyclerView.Adapter<RecyclerVi
     }
 
     fun setChannel(channel: GroupChannel) {
-        mChannel = channel
+        this.channel = channel
         isSingle = channel.members.size == 2
     }
 
@@ -299,11 +295,11 @@ class ChatDetailAdapter(val mContext: Context) : RecyclerView.Adapter<RecyclerVi
 
 
         if (message is UserMessage) {
-            val index = mFailedMessageIdList.indexOf(message.requestId)
+            val index = failedMessageList.indexOf(message.requestId)
             if (index >= 0) return true
 
         } else if (message is FileMessage) {
-            val index = mFailedMessageIdList.indexOf(message.requestId)
+            val index = failedMessageList.indexOf(message.requestId)
             if (index >= 0) return true
         }
 
@@ -321,16 +317,16 @@ class ChatDetailAdapter(val mContext: Context) : RecyclerView.Adapter<RecyclerVi
     }
 
     fun markMessageFailed(requestId: String) {
-        mFailedMessageIdList.add(requestId)
+        failedMessageList.add(requestId)
         notifyDataSetChanged()
     }
 
     fun removeFailedMessage(message: BaseMessage) {
         if (message is UserMessage) {
-            mFailedMessageIdList.remove(message.requestId)
+            failedMessageList.remove(message.requestId)
             data.remove(message)
         } else if (message is FileMessage) {
-            mFailedMessageIdList.remove(message.requestId)
+            failedMessageList.remove(message.requestId)
             mTempFileMessageUriTable.remove(message.requestId)
             data.remove(message)
         }
@@ -418,7 +414,7 @@ class ChatDetailAdapter(val mContext: Context) : RecyclerView.Adapter<RecyclerVi
      * its most recent messages.
      */
     fun markAllMessagesAsRead() {
-        if (mChannel != null) mChannel!!.markAsRead()
+        if (channel != null) channel!!.markAsRead()
         notifyDataSetChanged()
     }
 
@@ -428,7 +424,7 @@ class ChatDetailAdapter(val mContext: Context) : RecyclerView.Adapter<RecyclerVi
      * @param handler
      */
     fun loadPreviousMessages(limit: Int, handler: BaseChannel.GetMessagesHandler?) {
-        if (mChannel == null || isMessageListLoading) return
+        if (channel == null || isMessageListLoading) return
 
         var oldestMessageCreatedAt = java.lang.Long.MAX_VALUE
         if (data.size > 0) {
@@ -436,7 +432,7 @@ class ChatDetailAdapter(val mContext: Context) : RecyclerView.Adapter<RecyclerVi
         }
 
         isMessageListLoading = true
-        mChannel!!.getPreviousMessagesByTimestamp(oldestMessageCreatedAt,
+        channel!!.getPreviousMessagesByTimestamp(oldestMessageCreatedAt,
             false,
             limit,
             true,
@@ -465,7 +461,7 @@ class ChatDetailAdapter(val mContext: Context) : RecyclerView.Adapter<RecyclerVi
      * Should be used only on initial load or refresh.
      */
     fun loadLatestMessages(limit: Int, handler: BaseChannel.GetMessagesHandler?) {
-        if (mChannel == null) return
+        if (channel == null) return
 
         if (isMessageListLoading) return
 
@@ -474,7 +470,7 @@ class ChatDetailAdapter(val mContext: Context) : RecyclerView.Adapter<RecyclerVi
             else Long.MAX_VALUE
 
         isMessageListLoading = true
-        mChannel!!.getPreviousMessagesByTimestamp(oldestMessageCreatedAt,
+        channel!!.getPreviousMessagesByTimestamp(oldestMessageCreatedAt,
             true,
             limit,
             true,
@@ -510,11 +506,11 @@ class ChatDetailAdapter(val mContext: Context) : RecyclerView.Adapter<RecyclerVi
     }
 
     fun setItemLongClickListener(listener: OnItemLongClickListener) {
-        mItemLongClickListener = listener
+        itemLongClickListener = listener
     }
 
     fun setItemClickListener(listener: OnItemClickListener) {
-        mItemClickListener = listener
+        itemClickListener = listener
     }
 
     /**
@@ -558,7 +554,7 @@ class ChatDetailAdapter(val mContext: Context) : RecyclerView.Adapter<RecyclerVi
         private val tvBody: TextView = itemView.findViewById(R.id.tvBody)
         private val tvTs: TextView = itemView.findViewById(R.id.tvTs)
 
-        internal fun bind(message: AdminMessage, isNewDay: Boolean) {
+        internal fun bindAdminMsg(message: AdminMessage, isNewDay: Boolean) {
             tvBody.text = message.message
             if (isNewDay) {
                 tvTs.visibility = View.VISIBLE
@@ -568,17 +564,17 @@ class ChatDetailAdapter(val mContext: Context) : RecyclerView.Adapter<RecyclerVi
     }
 
     private inner class MyUserMessageHolder internal constructor(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        internal var CLChat: ConstraintLayout = itemView.findViewById(R.id.CLChat)
         internal var tvTitle: TextView = itemView.findViewById(R.id.tvTitle)
         internal var tvBody: TextView = itemView.findViewById(R.id.tvBody)
         internal var tvDate: TextView = itemView.findViewById(R.id.tvDate)
         internal var tvTime: TextView = itemView.findViewById(R.id.tvTime)
         internal var ivState: ImageView = itemView.findViewById(R.id.ivState)
-        internal var CLChatLeft: ConstraintLayout = itemView.findViewById(R.id.CLChatLeft)
 
-        internal fun bind(context: Context, message: UserMessage, channel: GroupChannel?,
-            isContinuous: Boolean, isNewDay: Boolean, isTempMessage: Boolean,
-            isFailedMessage: Boolean, clickListener: OnItemClickListener?,
-            longClickListener: OnItemLongClickListener?, position: Int
+        internal fun bindMyText(message: UserMessage, isContinuous: Boolean, isNewDay: Boolean,
+                                isTempMessage: Boolean, isFailedMessage: Boolean,
+                                clickListener: OnItemClickListener?,
+                                longClickListener: OnItemLongClickListener?, position: Int
         ) {
 
             tvBody.text = message.message
@@ -593,18 +589,18 @@ class ChatDetailAdapter(val mContext: Context) : RecyclerView.Adapter<RecyclerVi
 
             when {
                 isFailedMessage -> {
-                    ivState.setImageDrawable(mContext.getDrawable(R.drawable.ic_send_failed))
+                    ivState.setImageDrawable(this@ChatDetailAdapter.context.getDrawable(R.drawable.ic_send_failed))
                     ivState.visibility = View.VISIBLE
                 }
                 isTempMessage -> {
-                    ivState.setImageDrawable(mContext.getDrawable(R.drawable.ic_send_try))
+                    ivState.setImageDrawable(this@ChatDetailAdapter.context.getDrawable(R.drawable.ic_send_try))
                     ivState.visibility = View.VISIBLE
                 }
                 else ->
                     // Since setChannel is set slightly after adapter is created
                     if (channel != null) {
-                        val readReceipt = channel.getReadReceipt(message)
-                        ivState.setImageDrawable(mContext.getDrawable(R.drawable.ic_send_sent))
+                        val readReceipt = channel!!.getReadReceipt(message)
+                        ivState.setImageDrawable(this@ChatDetailAdapter.context.getDrawable(R.drawable.ic_send_sent))
                         ivState.visibility = View.VISIBLE
                     }
             }
@@ -617,7 +613,7 @@ class ChatDetailAdapter(val mContext: Context) : RecyclerView.Adapter<RecyclerVi
 //                    urlPreviewSiteNameText.text = "@" + previewInfo.siteName
 //                    urlPreviewTitleText.setText(previewInfo.title)
 //                    urlPreviewDescriptionText.setText(previewInfo.description)
-//                    ImageUtils.displayImageFromUrl(mContext, previewInfo.imageUrl, urlPreviewMainImageView, null)
+//                    ImageUtils.displayImageFromUrl(context, previewInfo.imageUrl, urlPreviewMainImageView, null)
 //                } catch (e: JSONException) {
 //                    urlPreviewContainer.visibility = View.GONE
 //                    e.printStackTrace()
@@ -638,23 +634,23 @@ class ChatDetailAdapter(val mContext: Context) : RecyclerView.Adapter<RecyclerVi
 
             // Set Selected
             if (selectedData[position]) {
-                CLChatLeft.background = ContextCompat.getDrawable(context, R.drawable.chat_green_selected)
+                CLChat.background = ContextCompat.getDrawable(context, R.drawable.chat_green_selected)
             } else {
-                CLChatLeft.background = ContextCompat.getDrawable(context, R.drawable.chat_green)
+                CLChat.background = ContextCompat.getDrawable(context, R.drawable.chat_green)
             }
         }
     }
 
     private inner class OtherUserMessageHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        internal var CLChat: ConstraintLayout = itemView.findViewById(R.id.CLChat)
         internal var tvTitle: TextView = itemView.findViewById(R.id.tvTitle)
         internal var tvBody: TextView = itemView.findViewById(R.id.tvBody)
         internal var tvDate: TextView = itemView.findViewById(R.id.tvDate)
         internal var tvTime: TextView = itemView.findViewById(R.id.tvTime)
-        internal var CLChatLeft: ConstraintLayout = itemView.findViewById(R.id.CLChatLeft)
 
-        internal fun bind(context: Context, message: UserMessage, channel: GroupChannel?, isNewDay: Boolean,
-                          isContinuous: Boolean, clickListener: OnItemClickListener?,
-                          longClickListener: OnItemLongClickListener?, position: Int) {
+        internal fun bindOthertext(message: UserMessage, isNewDay: Boolean, isContinuous: Boolean,
+                                   clickListener: OnItemClickListener?,
+                                   longClickListener: OnItemLongClickListener?, position: Int) {
 
             if (channel!!.memberCount>2) tvTitle.text = message.sender.toString()
 
@@ -682,9 +678,9 @@ class ChatDetailAdapter(val mContext: Context) : RecyclerView.Adapter<RecyclerVi
 
             // Set Selected
             if (selectedData[position]) {
-                CLChatLeft.background = ContextCompat.getDrawable(context, R.drawable.chat_white_selected)
+                CLChat.background = ContextCompat.getDrawable(context, R.drawable.chat_white_selected)
             } else {
-                CLChatLeft.background = ContextCompat.getDrawable(context, R.drawable.chat_white)
+                CLChat.background = ContextCompat.getDrawable(context, R.drawable.chat_white)
             }
         }
     }
@@ -692,32 +688,32 @@ class ChatDetailAdapter(val mContext: Context) : RecyclerView.Adapter<RecyclerVi
 
     /**OTHER FILE VIEW HOLDER**/
     private inner class MyFileMessageHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        internal var CLChat: ConstraintLayout = itemView.findViewById(R.id.CLChat)
         internal var tvTitle: TextView = itemView.findViewById(R.id.tvTitle)
         internal var tvTime: TextView = itemView.findViewById(R.id.tvTime)
         internal var ivState: ImageView = itemView.findViewById(R.id.ivState)
         internal var tvDate: TextView = itemView.findViewById(R.id.tvDate)
 
-        internal fun bind(context: Context?, message: FileMessage,
-                          position: Int, channel: GroupChannel?,
-                          isNewDay: Boolean, isTempMessage: Boolean, isFailedMessage: Boolean,
-                          tempFileMessageUri: Uri?, listener: OnItemClickListener?) {
+        internal fun bindMyFile(message: FileMessage, position: Int, isNewDay: Boolean,
+                                isTempMessage: Boolean, isFailedMessage: Boolean, tempFileMessageUri: Uri?,
+                                listener: OnItemClickListener?, longClickListener: OnItemLongClickListener?) {
 
             tvTitle.text = message.name
             tvTime.text = DataUtils.formatTime(message.createdAt)
 
             when {
                 isFailedMessage -> {
-                    ivState.setImageDrawable(mContext.getDrawable(R.drawable.ic_send_failed))
+                    ivState.setImageDrawable(this@ChatDetailAdapter.context.getDrawable(R.drawable.ic_send_failed))
                     ivState.visibility = View.VISIBLE
                 }
                 isTempMessage -> {
-                    ivState.setImageDrawable(mContext.getDrawable(R.drawable.ic_send_try))
+                    ivState.setImageDrawable(this@ChatDetailAdapter.context.getDrawable(R.drawable.ic_send_try))
                     ivState.visibility = View.VISIBLE
                 }
                 else ->
                     // Since setChannel is set slightly after adapter is created
                     if (channel != null) {
-                        ivState.setImageDrawable(mContext.getDrawable(R.drawable.ic_send_sent))
+                        ivState.setImageDrawable(this@ChatDetailAdapter.context.getDrawable(R.drawable.ic_send_sent))
                         ivState.visibility = View.VISIBLE
                     }
             }
@@ -729,11 +725,24 @@ class ChatDetailAdapter(val mContext: Context) : RecyclerView.Adapter<RecyclerVi
             } else tvDate.visibility = View.GONE
 
             if (listener != null) itemView.setOnClickListener { listener.onFileMessageItemClick(message, position) }
+            if (longClickListener != null) {
+                itemView.setOnLongClickListener {
+                    longClickListener.onFileMessageItemLongClick(message, position)
+                    true
+                }
+            }
 
+            // Set Selected
+            if (selectedData[position]) {
+                CLChat.background = ContextCompat.getDrawable(context, R.drawable.chat_green_selected)
+            } else {
+                CLChat.background = ContextCompat.getDrawable(context, R.drawable.chat_green)
+            }
         }
     }
 
     private inner class OtherFileMessageHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        internal var CLChat: ConstraintLayout = itemView.findViewById(R.id.CLChat)
         internal var tvTitle: TextView = itemView.findViewById(R.id.tvTitle)
         internal var tvTime: TextView = itemView.findViewById(R.id.tvTime)
         internal var tvBody: TextView = itemView.findViewById(R.id.tvBody)
@@ -741,9 +750,9 @@ class ChatDetailAdapter(val mContext: Context) : RecyclerView.Adapter<RecyclerVi
         internal var tvDate: TextView = itemView.findViewById(R.id.tvDate)
         internal var ivState: ImageView = itemView.findViewById(R.id.ivState)
 
-        internal fun bind(context: Context?, message: FileMessage,
-                          position: Int, channel: GroupChannel?,
-            isNewDay: Boolean, isContinuous: Boolean, listener: OnItemClickListener?) {
+        internal fun bindOtherFile(message: FileMessage, position: Int, isNewDay: Boolean,
+                                   isContinuous: Boolean, listener: OnItemClickListener?,
+                                   longClickListener: OnItemLongClickListener?) {
 
             tvTitle.text = message.name
             tvTime.text = DataUtils.formatTime(message.createdAt)
@@ -755,6 +764,20 @@ class ChatDetailAdapter(val mContext: Context) : RecyclerView.Adapter<RecyclerVi
             } else tvDate.visibility = View.GONE
 
             if (listener != null) itemView.setOnClickListener { listener.onFileMessageItemClick(message, position) }
+            if (longClickListener != null) {
+                itemView.setOnLongClickListener {
+                    longClickListener.onFileMessageItemLongClick(message, position)
+                    true
+                }
+            }
+
+
+            // Set Selected
+            if (selectedData[position]) {
+                CLChat.background = ContextCompat.getDrawable(context, R.drawable.chat_white_selected)
+            } else {
+                CLChat.background = ContextCompat.getDrawable(context, R.drawable.chat_white)
+            }
         }
     }
 
@@ -762,31 +785,32 @@ class ChatDetailAdapter(val mContext: Context) : RecyclerView.Adapter<RecyclerVi
 
     /**IMAGES FILE VIEW HOLDER**/
     private inner class MyImageFileMessageHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        internal var CLChat: ConstraintLayout = itemView.findViewById(R.id.CLChat)
         internal var tvTime: TextView = itemView.findViewById(R.id.tvTime)
         internal var ivState: ImageView = itemView.findViewById(R.id.ivState)
         internal var tvDate: TextView = itemView.findViewById(R.id.tvDate)
         internal var ivBody: ImageView = itemView.findViewById(R.id.ivBody)
 
-        internal fun bind(context: Context, message: FileMessage,
-                          position: Int, channel: GroupChannel?,
-                          isNewDay: Boolean, isTempMessage: Boolean, isFailedMessage: Boolean,
-                          tempFileMessageUri: Uri?, listener: OnItemClickListener?) {
+        internal fun bindMyImage(message: FileMessage, position: Int,
+                                 isNewDay: Boolean, isTempMessage: Boolean, isFailedMessage: Boolean,
+                                 tempFileMessageUri: Uri?, listener: OnItemClickListener?,
+                                 longClickListener: OnItemLongClickListener?) {
 
             tvTime.text = DataUtils.formatTime(message.createdAt)
 
             when {
                 isFailedMessage -> {
-                    ivState.setImageDrawable(mContext.getDrawable(R.drawable.ic_send_failed))
+                    ivState.setImageDrawable(this@ChatDetailAdapter.context.getDrawable(R.drawable.ic_send_failed))
                     ivState.visibility = View.VISIBLE
                 }
                 isTempMessage -> {
-                    ivState.setImageDrawable(mContext.getDrawable(R.drawable.ic_send_try))
+                    ivState.setImageDrawable(this@ChatDetailAdapter.context.getDrawable(R.drawable.ic_send_try))
                     ivState.visibility = View.VISIBLE
                 }
                 else ->
                     // Since setChannel is set slightly after adapter is created
                     if (channel != null) {
-                        ivState.setImageDrawable(mContext.getDrawable(R.drawable.ic_send_sent))
+                        ivState.setImageDrawable(this@ChatDetailAdapter.context.getDrawable(R.drawable.ic_send_sent))
                         ivState.visibility = View.VISIBLE
                     }
             }
@@ -799,7 +823,7 @@ class ChatDetailAdapter(val mContext: Context) : RecyclerView.Adapter<RecyclerVi
 
 
             if (isTempMessage && tempFileMessageUri != null) {
-                ImageUtils.displayImageFromUrl(mContext, tempFileMessageUri.toString(), ivBody, null)
+                ImageUtils.displayImageFromUrl(this@ChatDetailAdapter.context, tempFileMessageUri.toString(), ivBody, null)
             } else {
                 // Get thumbnails from FileMessage
                 val thumbnails = message.thumbnails as ArrayList<FileMessage.Thumbnail>
@@ -808,44 +832,54 @@ class ChatDetailAdapter(val mContext: Context) : RecyclerView.Adapter<RecyclerVi
                 if (thumbnails.size > 0) {
                     if (message.type.toLowerCase().contains("gif")) {
                         ImageUtils.displayGifImageFromUrl(
-                            mContext,
+                            this@ChatDetailAdapter.context,
                             message.url,
                             ivBody,
                             thumbnails[0].url,
                             ivBody.drawable
                         )
-                    } else {
-                        ImageUtils.displayImageFromUrl(mContext, thumbnails[0].url, ivBody, ivBody.drawable)
-                    }
+                    } else ImageUtils.displayImageFromUrl(this@ChatDetailAdapter.context, thumbnails[0].url, ivBody, ivBody.drawable)
                 } else {
                     if (message.type.toLowerCase().contains("gif")) {
                         ImageUtils.displayGifImageFromUrl(
-                            mContext,
+                            this@ChatDetailAdapter.context,
                             message.url,
                             ivBody,
                             null as String?,
                             ivBody.drawable
                         )
-                    } else {
-                        ImageUtils.displayImageFromUrl(mContext, message.url, ivBody, ivBody.drawable)
-                    }
+                    } else ImageUtils.displayImageFromUrl(this@ChatDetailAdapter.context, message.url, ivBody, ivBody.drawable)
+
                 }
             }
 
             if (listener != null) itemView.setOnClickListener { listener.onFileMessageItemClick(message, position) }
+            if (longClickListener != null) {
+                itemView.setOnLongClickListener {
+                    longClickListener.onFileMessageItemLongClick(message, position)
+                    true
+                }
+            }
 
+            // Set Selected
+            if (selectedData[position]) {
+                CLChat.background = ContextCompat.getDrawable(context, R.drawable.chat_green_selected)
+            } else {
+                CLChat.background = ContextCompat.getDrawable(context, R.drawable.chat_green)
+            }
         }
     }
 
     private inner class OtherImageFileMessageHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        internal var CLChat: ConstraintLayout = itemView.findViewById(R.id.CLChat)
         internal var tvTime: TextView = itemView.findViewById(R.id.tvTime)
         internal var tvTitle: TextView = itemView.findViewById(R.id.tvTitle)
         internal var tvDate: TextView = itemView.findViewById(R.id.tvDate)
         internal var ivBody: ImageView = itemView.findViewById(R.id.ivBody)
 
-        internal fun bind(context: Context, message: FileMessage,
-                          channel: GroupChannel?, position: Int,
-                          isNewDay: Boolean, isContinuous: Boolean, listener: OnItemClickListener?) {
+        internal fun bindOtherImage(message: FileMessage, position: Int, isNewDay: Boolean,
+                                    isContinuous: Boolean, listener: OnItemClickListener?,
+                                    longClickListener: OnItemLongClickListener?) {
 
             tvTime.text = DataUtils.formatTime(message.createdAt)
 
@@ -871,19 +905,32 @@ class ChatDetailAdapter(val mContext: Context) : RecyclerView.Adapter<RecyclerVi
             // If thumbnails exist, get smallest (first) thumbnail and display it in the message
             if (thumbnails.size > 0) {
                 if (message.type.toLowerCase().contains("gif")) {
-                    ImageUtils.displayGifImageFromUrl(mContext, message.url, ivBody, thumbnails[0].url, ivBody.drawable)
+                    ImageUtils.displayGifImageFromUrl(this@ChatDetailAdapter.context, message.url, ivBody, thumbnails[0].url, ivBody.drawable)
                 } else {
-                    ImageUtils.displayImageFromUrl(mContext, thumbnails[0].url, ivBody, ivBody.drawable)
+                    ImageUtils.displayImageFromUrl(this@ChatDetailAdapter.context, thumbnails[0].url, ivBody, ivBody.drawable)
                 }
             } else {
                 if (message.type.toLowerCase().contains("gif")) {
-                    ImageUtils.displayGifImageFromUrl(mContext, message.url, ivBody, null as String?, ivBody.drawable)
+                    ImageUtils.displayGifImageFromUrl(this@ChatDetailAdapter.context, message.url, ivBody, null as String?, ivBody.drawable)
                 } else {
-                    ImageUtils.displayImageFromUrl(mContext, message.url, ivBody, ivBody.drawable)
+                    ImageUtils.displayImageFromUrl(this@ChatDetailAdapter.context, message.url, ivBody, ivBody.drawable)
                 }
             }
 
             if (listener != null) itemView.setOnClickListener { listener.onFileMessageItemClick(message, position) }
+            if (longClickListener != null) {
+                itemView.setOnLongClickListener {
+                    longClickListener.onFileMessageItemLongClick(message, position)
+                    true
+                }
+            }
+
+            // Set Selected
+            if (selectedData[position]) {
+                CLChat.background = ContextCompat.getDrawable(context, R.drawable.chat_white_selected)
+            } else {
+                CLChat.background = ContextCompat.getDrawable(context, R.drawable.chat_white)
+            }
         }
     }
 
@@ -891,29 +938,30 @@ class ChatDetailAdapter(val mContext: Context) : RecyclerView.Adapter<RecyclerVi
 
     /**VIDEOS FILE VIEW HOLDER**/
     private inner class MyVideoFileMessageHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        internal var CLChat: ConstraintLayout = itemView.findViewById(R.id.CLChat)
         internal var tvTime: TextView = itemView.findViewById(R.id.tvTime)
         internal var ivState: ImageView = itemView.findViewById(R.id.ivState)
         internal var tvDate: TextView = itemView.findViewById(R.id.tvDate)
         internal var ivBody: ImageView = itemView.findViewById(R.id.ivBody)
 
-        internal fun bind(context: Context?, message: FileMessage, position: Int,
-            channel: GroupChannel?, isNewDay: Boolean, isTempMessage: Boolean,
-            isFailedMessage: Boolean, tempFileMessageUri: Uri?, listener: OnItemClickListener?) {
+        internal fun bind(message: FileMessage, position: Int, isNewDay: Boolean, isTempMessage: Boolean,
+                          isFailedMessage: Boolean, tempFileMessageUri: Uri?,
+                          listener: OnItemClickListener?, longClickListener: OnItemLongClickListener?) {
 
             tvTime.text = DataUtils.formatTime(message.createdAt)
             when {
                 isFailedMessage -> {
-                    ivState.setImageDrawable(mContext.getDrawable(R.drawable.ic_send_failed))
+                    ivState.setImageDrawable(context.getDrawable(R.drawable.ic_send_failed))
                     ivState.visibility = View.VISIBLE
                 }
                 isTempMessage -> {
-                    ivState.setImageDrawable(mContext.getDrawable(R.drawable.ic_send_try))
+                    ivState.setImageDrawable(context.getDrawable(R.drawable.ic_send_try))
                     ivState.visibility = View.VISIBLE
                 }
                 else ->
                     // Since setChannel is set slightly after adapter is created
                     if (channel != null) {
-                        ivState.setImageDrawable(mContext.getDrawable(R.drawable.ic_send_sent))
+                        ivState.setImageDrawable(context.getDrawable(R.drawable.ic_send_sent))
                         ivState.visibility = View.VISIBLE
                     }
             }
@@ -925,7 +973,7 @@ class ChatDetailAdapter(val mContext: Context) : RecyclerView.Adapter<RecyclerVi
             } else tvDate.visibility = View.GONE
 
 
-            if (isTempMessage && tempFileMessageUri != null) ImageUtils.displayImageFromUrl(mContext, tempFileMessageUri.toString(), ivBody, null)
+            if (isTempMessage && tempFileMessageUri != null) ImageUtils.displayImageFromUrl(context, tempFileMessageUri.toString(), ivBody, null)
             else {
                 // Get thumbnails from FileMessage
                 val thumbnails = message.thumbnails as ArrayList<FileMessage.Thumbnail>
@@ -933,7 +981,7 @@ class ChatDetailAdapter(val mContext: Context) : RecyclerView.Adapter<RecyclerVi
                 // If thumbnails exist, get smallest (first) thumbnail and display it in the message
                 if (thumbnails.size > 0) {
                     ImageUtils.displayImageFromUrl(
-                        mContext,
+                        context,
                         thumbnails[0].url,
                         ivBody,
                         ivBody.drawable
@@ -942,19 +990,32 @@ class ChatDetailAdapter(val mContext: Context) : RecyclerView.Adapter<RecyclerVi
             }
 
             if (listener != null) itemView.setOnClickListener { listener.onFileMessageItemClick(message, position) }
+            if (longClickListener != null) {
+                itemView.setOnLongClickListener {
+                    longClickListener.onFileMessageItemLongClick(message, position)
+                    true
+                }
+            }
 
+            // Set Selected
+            if (selectedData[position]) {
+                CLChat.background = ContextCompat.getDrawable(context, R.drawable.chat_green_selected)
+            } else {
+                CLChat.background = ContextCompat.getDrawable(context, R.drawable.chat_green)
+            }
         }
     }
 
     private inner class OtherVideoFileMessageHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        internal var CLChat: ConstraintLayout = itemView.findViewById(R.id.CLChat)
         internal var tvTime: TextView = itemView.findViewById(R.id.tvTime)
         internal var tvTitle: TextView = itemView.findViewById(R.id.tvTitle)
         internal var tvDate: TextView = itemView.findViewById(R.id.tvDate)
         internal var ivBody: ImageView = itemView.findViewById(R.id.ivBody)
 
-        internal fun bind(context: Context?, message: FileMessage,
-                          position: Int, channel: GroupChannel?,
-            isNewDay: Boolean, isContinuous: Boolean, listener: OnItemClickListener?) {
+        internal fun bindOtherVideo(message: FileMessage, position: Int, isNewDay: Boolean,
+                                    isContinuous: Boolean, listener: OnItemClickListener?,
+                                    longClickListener: OnItemLongClickListener?) {
 
             tvTime.text = DataUtils.formatTime(message.createdAt)
 
@@ -968,7 +1029,7 @@ class ChatDetailAdapter(val mContext: Context) : RecyclerView.Adapter<RecyclerVi
                 // Hide profile image and nickname if the previous message was also sent by current sender.
                 if (isContinuous) tvTitle.visibility = View.GONE
                 else {
-                    ImageUtils.displayRoundImageFromUrl(mContext, message.sender.profileUrl, ivBody)
+                    ImageUtils.displayRoundImageFromUrl(this@ChatDetailAdapter.context, message.sender.profileUrl, ivBody)
 
                     tvTitle.visibility = View.VISIBLE
                     tvTitle.text = message.sender.nickname
@@ -979,10 +1040,23 @@ class ChatDetailAdapter(val mContext: Context) : RecyclerView.Adapter<RecyclerVi
             val thumbnails = message.thumbnails as ArrayList<FileMessage.Thumbnail>
 
             // If thumbnails exist, get smallest (first) thumbnail and display it in the message
-            if (thumbnails.size > 0) ImageUtils.displayImageFromUrl(mContext, thumbnails[0].url, ivBody, ivBody.drawable)
+            if (thumbnails.size > 0) ImageUtils.displayImageFromUrl(this@ChatDetailAdapter.context, thumbnails[0].url, ivBody, ivBody.drawable)
 
             if (listener != null) itemView.setOnClickListener { listener.onFileMessageItemClick(message, position) }
+            if (longClickListener != null) {
+                itemView.setOnLongClickListener {
+                    longClickListener.onFileMessageItemLongClick(message, position)
+                    true
+                }
+            }
 
+
+            // Set Selected
+            if (selectedData[position]) {
+                CLChat.background = ContextCompat.getDrawable(context, R.drawable.chat_white_selected)
+            } else {
+                CLChat.background = ContextCompat.getDrawable(context, R.drawable.chat_white)
+            }
         }
     }
 

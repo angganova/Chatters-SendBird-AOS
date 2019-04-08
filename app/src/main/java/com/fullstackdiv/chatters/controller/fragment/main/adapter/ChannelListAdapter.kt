@@ -416,7 +416,6 @@ class ChannelListAdapter(val context: Context, val rowLayout: Int) : RecyclerVie
     }
 
     // Item Selection
-
     fun getSelectedChannels():List<GroupChannel>{
         val selectedChannels = arrayListOf<GroupChannel>()
         for (x in selectedData.indices){
