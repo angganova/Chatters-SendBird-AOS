@@ -1,9 +1,7 @@
-package com.fullstackdiv.chatters.helper.utils
+package com.fullstackdiv.chatters.controller.extension
 
-import android.R.attr.end
 import android.os.Build
 import androidx.annotation.RequiresApi
-import android.R.attr.start
 import android.animation.ValueAnimator
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.animation.ObjectAnimator

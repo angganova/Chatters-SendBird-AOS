@@ -4,7 +4,7 @@ import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import com.fullstackdiv.chatters.R
-import com.fullstackdiv.chatters.helper.HelperView
+import com.fullstackdiv.chatters.helper.utils.PopUpUtils
 import com.fullstackdiv.chatters.helper.UserDefault
 import com.sendbird.android.SendBird
 import kotlinx.android.synthetic.main.activity_login.*
@@ -31,11 +31,11 @@ class LoginActivity : AppCompatActivity() {
     fun isValid(): Boolean{
         return when{
             etID.text.isNullOrBlank() -> {
-                HelperView.sShortToast(this,"Empty ID / Email")
+                PopUpUtils.sShortToast(this,"Empty ID / Email")
                 false
             }
             etID.text.length<6 -> {
-                HelperView.sShortToast(this,"Invalid ID / Email")
+                PopUpUtils.sShortToast(this,"Invalid ID / Email")
                 false
             }
             else -> true
@@ -72,7 +72,7 @@ class LoginActivity : AppCompatActivity() {
             SendBird.UserInfoUpdateHandler { e ->
                 if (e != null) {
                     // Error.
-                    HelperView.sShortToast(this, "Update user nickname failed")
+                    PopUpUtils.sShortToast(this, "Update user nickname failed")
                     return@UserInfoUpdateHandler
                 } else {
                     userDefault.nickname = nickname

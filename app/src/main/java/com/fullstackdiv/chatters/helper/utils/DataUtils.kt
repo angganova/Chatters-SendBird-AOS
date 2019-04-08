@@ -1,4 +1,4 @@
-package com.fullstackdiv.chatters.helper
+package com.fullstackdiv.chatters.helper.utils
 
 import android.content.Context
 import android.graphics.Color
@@ -17,13 +17,19 @@ import java.util.concurrent.ThreadLocalRandom
  * Created by Angga N P on 10/18/2018.
  */
 
-class HelperData{
+class DataUtils{
     companion object {
         private const val TAG = "TAG"
 
         fun dpToPx(ctx: Context, dp: Int): Int {
             val r = ctx.resources
-            return Math.round(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp.toFloat(), r.displayMetrics))
+            return Math.round(
+                TypedValue.applyDimension(
+                    TypedValue.COMPLEX_UNIT_DIP,
+                    dp.toFloat(),
+                    r.displayMetrics
+                )
+            )
         }
 
         fun isValidEmail(target: CharSequence): Boolean {

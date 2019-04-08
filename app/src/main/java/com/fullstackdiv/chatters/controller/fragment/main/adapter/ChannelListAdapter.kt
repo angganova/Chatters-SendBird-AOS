@@ -3,7 +3,6 @@ package com.fullstackdiv.chatters.controller.fragment.main.adapter
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.drawable.Drawable
-import android.opengl.Visibility
 import android.util.Log
 import android.util.SparseArray
 import android.view.LayoutInflater
@@ -15,9 +14,9 @@ import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.request.target.SimpleTarget
 import com.fullstackdiv.chatters.R
-import com.fullstackdiv.chatters.helper.HelperData
+import com.fullstackdiv.chatters.helper.utils.DataUtils
 import com.fullstackdiv.chatters.helper.utils.TextUtils
-import com.fullstackdiv.chatters.helper.utils.TypingIndicator
+import com.fullstackdiv.chatters.controller.extension.TypingIndicator
 import com.sendbird.android.*
 import java.util.concurrent.ConcurrentHashMap
 import com.fullstackdiv.chatters.helper.utils.FileUtils
@@ -59,6 +58,7 @@ class ChannelListAdapter(val context: Context, val rowLayout: Int) : RecyclerVie
     private val mChannelBitmapMap: ConcurrentHashMap<String, SparseArray<Bitmap>> = ConcurrentHashMap()
 
     var selection_state = false
+    var selection_state_on = false
 
     fun setOnItemClickListener(listener: OnItemClickListener) {
         mItemClickListener = listener
@@ -109,41 +109,43 @@ class ChannelListAdapter(val context: Context, val rowLayout: Int) : RecyclerVie
         fun bindView(context: Context, position: Int, channel: GroupChannel,
             clickListener: OnItemClickListener?, longClickListener: OnItemLongClickListener?
         ) {
+            when {
+                channel.members.size < 2 -> return
+                channel.members.size > 2 -> {
+                    //Group Channel
+                    tvNickname.text = TextUtils.getGroupChannelTitle(channel)
+                    setChannelImage(position, channel, mivPP)
 
-            if (channel.members.size>2){
-                //Group Channel
-                tvNickname.text = TextUtils.getGroupChannelTitle(channel)
-                setChannelImage(position, channel, mivPP)
+                    mivPP.visibility = View.VISIBLE
+                    ivPP.visibility = View.GONE
+                }
+                else -> {
+                    tvNickname.text =
+                        if (channel.members[0].userId != SendBird.getCurrentUser().userId) channel.members[0].nickname
+                        else channel.members[1].nickname
 
-                mivPP.visibility = View.VISIBLE
-                ivPP.visibility = View.GONE
-            }
-            else{
-                tvNickname.text =
-                    if (channel.members[0].userId != SendBird.getCurrentUser().userId) channel.members[0].nickname
-                    else channel.members[1].nickname
-
-                glide.load(
-                    if (channel.members[0].userId != SendBird.getCurrentUser().userId) channel.members[0].profileUrl
-                    else channel.members[1].profileUrl
+                    glide.load(
+                        if (channel.members[0].userId != SendBird.getCurrentUser().userId) channel.members[0].profileUrl
+                        else channel.members[1].profileUrl
                     )
-                    .override(100, 100)
-                    .apply(RequestOptions.circleCropTransform())
-                    .listener(object : RequestListener<Drawable> {
-                        override fun onLoadFailed(e: GlideException?, model: Any?,
-                            target: Target<Drawable>?, isFirstResource: Boolean): Boolean {
-                            return false
-                        }
+                        .override(100, 100)
+                        .apply(RequestOptions.circleCropTransform())
+                        .listener(object : RequestListener<Drawable> {
+                            override fun onLoadFailed(e: GlideException?, model: Any?,
+                                                      target: Target<Drawable>?, isFirstResource: Boolean): Boolean {
+                                return false
+                            }
 
-                        override fun onResourceReady(resource: Drawable?, model: Any?, target: Target<Drawable>?,
-                            dataSource: DataSource?, isFirstResource: Boolean): Boolean {
-                            return false
-                        }
-                    })
-                    .into(ivPP)
+                            override fun onResourceReady(resource: Drawable?, model: Any?, target: Target<Drawable>?,
+                                                         dataSource: DataSource?, isFirstResource: Boolean): Boolean {
+                                return false
+                            }
+                        })
+                        .into(ivPP)
 
-                ivPP.visibility = View.VISIBLE
-                mivPP.visibility = View.GONE
+                    ivPP.visibility = View.VISIBLE
+                    mivPP.visibility = View.GONE
+                }
             }
 
             // If there are no unread messages, hide the unread count badge.
@@ -167,7 +169,7 @@ class ChannelListAdapter(val context: Context, val rowLayout: Int) : RecyclerVie
 
                 tvTime.visibility = View.VISIBLE
                 tvMsg.visibility = View.VISIBLE
-                tvTime.text = HelperData.formatDateTime(lastMessage.createdAt)
+                tvTime.text = DataUtils.formatDateTime(lastMessage.createdAt)
             }
             else {
                 tvTime.visibility = View.INVISIBLE
@@ -249,6 +251,12 @@ class ChannelListAdapter(val context: Context, val rowLayout: Int) : RecyclerVie
         data.add(channel)
         selectedData.add(false)
         notifyItemInserted(data.size - 1)
+    }
+
+    fun removeChannel(i:Int){
+        data.remove(data[i])
+        selectedData.removeAt(i)
+        notifyDataSetChanged()
     }
 
     fun setChannel(list: MutableList<GroupChannel>){
@@ -407,17 +415,28 @@ class ChannelListAdapter(val context: Context, val rowLayout: Int) : RecyclerVie
 
     }
 
-
     // Item Selection
+
+    fun getSelectedChannels():List<GroupChannel>{
+        val selectedChannels = arrayListOf<GroupChannel>()
+        for (x in selectedData.indices){
+            if (selectedData[x]) selectedChannels.add(data[x])
+        }
+
+        return selectedChannels
+    }
+
     fun select(pos: Int){
         selection_state = true
         selectedData[pos] = true
         notifyItemChanged(pos)
+        selection_state_on = getSelectedState()
     }
 
     fun unSelect(pos: Int){
         selectedData[pos] = false
         notifyItemChanged(pos)
+        selection_state_on = getSelectedState()
     }
 
     fun isSelected(pos: Int): Boolean{
@@ -426,6 +445,7 @@ class ChannelListAdapter(val context: Context, val rowLayout: Int) : RecyclerVie
 
     fun clearSelection(){
         selection_state = false
+        selection_state_on = false
         selectedData.clear()
         for (x in data) {
             selectedData.add(false)
@@ -439,5 +459,16 @@ class ChannelListAdapter(val context: Context, val rowLayout: Int) : RecyclerVie
             if (x) count+=1
         }
         return count
+    }
+
+    fun getSelectedState():Boolean {
+        for (x in selectedData.indices){
+            if (selectedData[x] && data[x].isPushEnabled){
+                println("XXX true")
+                return true
+            }
+        }
+        println("XXX false")
+        return false
     }
 }

@@ -4,6 +4,7 @@ import android.animation.ArgbEvaluator
 import android.animation.ValueAnimator
 import android.content.Intent
 import android.os.Bundle
+import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
@@ -81,32 +82,34 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
-    fun setActBar(i: Int): Boolean{
-        if (opt_menu != 0) return false
+    fun setSelectionActBar(click: View.OnClickListener){
+        if (opt_menu != 0) return
 
-        opt_menu = i
+        opt_menu = 1
+
         toolbar.setNavigationIcon(R.drawable.ic_back_white)
-        toolbar.setNavigationOnClickListener {
-            setNormalActBar()
-        }
-
+        toolbar.setNavigationOnClickListener(click)
         animColor(ContextCompat.getColor(this, R.color.colorPrimary),
             ContextCompat.getColor(this, R.color.colorPrimaryDark))
 
         invalidateOptionsMenu()
-
-        return true
     }
 
     fun setNormalActBar(){
-        opt_menu = 0
+        if (opt_menu == 0) return
 
+        opt_menu = 0
         toolbar.title = userDefault.nickname
         animColor(ContextCompat.getColor(this, R.color.colorPrimaryDark),
             ContextCompat.getColor(this, R.color.colorPrimary))
 
         invalidateOptionsMenu()
         toolbar.navigationIcon = null
+    }
+
+    fun updateToolbarMenuCounter(count:Int){
+        toolbar.title = count.toString()
+        invalidateOptionsMenu()
     }
 
     fun animColor(colorFrom:Int, colorTo:Int){
@@ -242,6 +245,8 @@ class MainActivity : AppCompatActivity() {
     /*FRAGMENT CONTAINER FUN*/
     // Change Fragment Without Backstack
     fun cFragmentNoBS(fragment: Fragment) {
+        setNormalActBar()
+
         supportFragmentManager.popBackStack(null, FragmentManager.POP_BACK_STACK_INCLUSIVE)
         val ft = supportFragmentManager.beginTransaction()
         ft.replace(R.id.FLC, fragment)
@@ -300,5 +305,14 @@ class MainActivity : AppCompatActivity() {
 
     fun showLO(){
         fabLogout.show()
+    }
+
+    override fun onBackPressed() {
+        if (opt_menu != 0) {
+            if(curFragment is ChannelListFragment){
+                (curFragment as ChannelListFragment).endSelection()
+            }
+        }
+        else super.onBackPressed()
     }
 }

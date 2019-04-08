@@ -1,15 +1,13 @@
-package com.fullstackdiv.chatters.helper
+package com.fullstackdiv.chatters.helper.utils
 
-import org.json.JSONObject
 import org.json.JSONException
-
-
+import org.json.JSONObject
 
 /**
  * Created by Angga N P on 3/29/2019.
  */
 
-class HelperUrl {
+class UrlUtils {
     val url: String
     val siteName: String
     val title: String

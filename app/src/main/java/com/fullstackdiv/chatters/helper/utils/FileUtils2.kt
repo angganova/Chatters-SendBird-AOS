@@ -21,8 +21,7 @@ import java.util.*
  * Created by Angga N P on 3/29/2019.
  */
 
-object FileUtils {
-
+object FileUtils2 {
     fun getFileInfo(context: Context, uri: Uri): Hashtable<String, Any>? {
         // DocumentProvider
         if (DocumentsContract.isDocumentUri(context, uri)) {

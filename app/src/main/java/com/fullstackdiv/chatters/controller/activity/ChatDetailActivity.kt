@@ -3,6 +3,7 @@ package com.fullstackdiv.chatters.controller.activity
 import android.Manifest
 import android.animation.Animator
 import android.app.Activity
+import android.content.DialogInterface
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -12,8 +13,7 @@ import android.text.Editable
 import android.text.InputType
 import android.text.TextWatcher
 import android.util.Log
-import android.view.View
-import android.view.ViewAnimationUtils
+import android.view.*
 import android.view.inputmethod.EditorInfo
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -24,15 +24,17 @@ import androidx.recyclerview.widget.DefaultItemAnimator
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.fullstackdiv.chatters.R
-import com.fullstackdiv.chatters.helper.HelperUrl
-import com.fullstackdiv.chatters.helper.HelperView
+import com.fullstackdiv.chatters.helper.utils.PopUpUtils
 import com.fullstackdiv.chatters.helper.UserDefault
-import com.fullstackdiv.chatters.helper.utils.FileUtils
-import com.fullstackdiv.chatters.helper.utils.ImageUtils
-import com.fullstackdiv.chatters.helper.utils.TextUtils
+import com.fullstackdiv.chatters.helper.utils.*
 import com.google.android.material.snackbar.Snackbar
 import com.sendbird.android.*
 import com.squareup.picasso.Picasso
+import io.reactivex.Observable
+import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.disposables.CompositeDisposable
+import io.reactivex.observers.DisposableObserver
+import io.reactivex.schedulers.Schedulers
 import jp.wasabeef.picasso.transformations.CropCircleTransformation
 import kotlinx.android.synthetic.main.activity_chat_detail.*
 import kotlinx.android.synthetic.main.in_menu_attachment.*
@@ -41,12 +43,23 @@ import java.io.File
 
 
 class ChatDetailActivity : AppCompatActivity() {
+    private val compositeDisposable = CompositeDisposable()
+
     private val STATE_NORMAL = 0
     private val STATE_EDIT = 1
     private val STATE_CHANNEL_URL = "STATE_CHANNEL_URL"
     private val PERMISSION_WRITE_EXTERNAL_STORAGE = 13
     private val INTENT_REQUEST_CHOOSE_MEDIA = 301
-    private val mFileProgressHandlerMap: HashMap<BaseChannel.SendFileMessageWithProgressHandler, FileMessage>? = null
+
+    private val INTENT_REQ_DOCUMENT = 901
+    private val INTENT_REQ_CAMERA = 902
+    private val INTENT_REQ_GALLERY = 903
+    private val INTENT_REQ_AUDIO = 904
+    private val INTENT_REQ_LOCATION = 905
+    private val INTENT_REQ_CONTACT = 906
+
+    private val mFileProgressHandlerMap:
+            HashMap<BaseChannel.SendFileMessageWithProgressHandler, FileMessage>? = null
     var mCurrentState = STATE_NORMAL
 
     val CONNECTION_HANDLER_ID = "CONNECTION_HANDLER_GROUP_CHAT"
@@ -64,6 +77,7 @@ class ChatDetailActivity : AppCompatActivity() {
     lateinit var layoutManager:LinearLayoutManager
 
     var state_compose = false
+    var opt_menu = 0
 
     public override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
@@ -71,20 +85,33 @@ class ChatDetailActivity : AppCompatActivity() {
         // Set this as true to restore background connection management.
         SendBird.setAutoBackgroundDetection(true)
 
-        if (requestCode == INTENT_REQUEST_CHOOSE_MEDIA && resultCode == Activity.RESULT_OK) {
+        if (resultCode == Activity.RESULT_OK) {
             // If user has successfully chosen the image, show a dialog to confirm upload.
-            if (data == null) {
+
+            when(requestCode){
+                INTENT_REQ_GALLERY->{
+
+                }
+            }
+
+            if (data != null && data.data != null) {
+                println("XXXASDF DATA : $data")
+                println("XXXASDF DATA url : ${data.data}")
+                println("XXXASDF DATA categories : ${data.categories}")
+                println("XXXASDF DATA type : ${data.type}")
+//                sendFileWithThumbnail(data.data!!)
+            }else{
                 Log.wtf("LOG_TAG", "data is null!")
                 return
             }
-
-            sendFileWithThumbnail(data.data)
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_chat_detail)
+        setSupportActionBar(toolbar)
+
         userDefault = UserDefault.getInstance(applicationContext)
         postponeEnterTransition()
 
@@ -94,7 +121,7 @@ class ChatDetailActivity : AppCompatActivity() {
             adapterChat = ChatDetailAdapter(this)
             refreshChannel()
         }else{
-            HelperView.sLongToast(this, "Chat Invalid")
+            PopUpUtils.sLongToast(this, "Chat Invalid")
             finish()
         }
     }
@@ -139,7 +166,7 @@ class ChatDetailActivity : AppCompatActivity() {
     }
 
     // Set Channel Handler
-    fun setChannelHandler(){
+    private fun setChannelHandler(){
         SendBird.addChannelHandler(channel_url, object : SendBird.ChannelHandler() {
             override fun onMessageReceived(baseChannel: BaseChannel, baseMessage: BaseMessage) {
                 if (baseChannel.url == channel_url) {
@@ -178,6 +205,7 @@ class ChatDetailActivity : AppCompatActivity() {
         setRecyclerView()
     }
 
+    // Set Chat List
     private fun setRecyclerView() {
         layoutManager = LinearLayoutManager(this)
         layoutManager.reverseLayout = true
@@ -213,26 +241,32 @@ class ChatDetailActivity : AppCompatActivity() {
         setBaseView()
     }
 
-    fun setBaseView(){
+    // Set Base View Display
+    private fun setBaseView(){
         tvTitle.text = if (channel != null)  TextUtils.getGroupChannelTitle(channel!!) else ""
+
         Picasso.with(this)
             .load(ImageUtils.getGroupChannelImage(channel!!))
             .resize(100,100)
             .transform(CropCircleTransformation())
             .into(ivPP)
-        setAction()
+        setBaseAction()
+
+        toolbar.setNavigationIcon(R.drawable.ic_back_white)
+        toolbar.setNavigationOnClickListener { onBackPressed() }
     }
 
-
-    fun setAction(){
-        ivBack.setOnClickListener { onBackPressed()  }
-
+    // Set Base Action
+    private fun setBaseAction(){
         fabSend.setOnClickListener {
-            if (state_compose) sendMsg(etChat.text.toString())
-            else toggleMenu()
+//            if (state_compose) sendMsg(etChat.text.toString())
+//            else toggleAttachMenu()
+            requestMedia()
         }
 
-        btCloseMenu.setOnClickListener { toggleMenu() }
+        ivChBg.setOnClickListener { changeBackground() }
+
+        btCloseMenu.setOnClickListener { toggleAttachMenu() }
 
         fabBellow.setOnClickListener {
             rv.smoothScrollToPosition(0)
@@ -267,14 +301,22 @@ class ChatDetailActivity : AppCompatActivity() {
             true
         }
 
-        etChat.setOnClickListener { if (CLAttachMenu.isVisible) toggleMenu() }
+        etChat.setOnClickListener { if (CLAttachMenu.isVisible) toggleAttachMenu() }
 
         etChat.onFocusChangeListener = View.OnFocusChangeListener { p0, _ ->
-            if (p0!!.hasFocus() && CLAttachMenu.isVisible) toggleMenu()
+            if (p0!!.hasFocus() && CLAttachMenu.isVisible) toggleAttachMenu()
         }
 
         adapterChat.setItemClickListener(object : ChatDetailAdapter.OnItemClickListener {
-            override fun onUserMessageItemClick(message: UserMessage) {
+            override fun onUserMessageItemClick(message: UserMessage, position: Int) {
+                if (adapterChat.selection_state){
+                    if (adapterChat.isSelected(position)) {
+                        unSelectMsg(position)
+                        if (adapterChat.selectedCount() == 0) endSelection()
+                    } else selectMsg(position)
+
+                }
+
                 // Restore failed message and remove the failed message from list.
                 if (adapterChat.isFailedMessage(message)) {
                     retryFailedMessage(message)
@@ -288,7 +330,7 @@ class ChatDetailActivity : AppCompatActivity() {
 
                 if (message.customType == adapterChat.URL_PREVIEW_CUSTOM_TYPE) {
                     try {
-                        val info = HelperUrl(message.data)
+                        val info = UrlUtils(message.data)
                         val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(info.url))
                         startActivity(browserIntent)
                     } catch (e: JSONException) {
@@ -298,7 +340,7 @@ class ChatDetailActivity : AppCompatActivity() {
                 }
             }
 
-            override fun onFileMessageItemClick(message: FileMessage) {
+            override fun onFileMessageItemClick(message: FileMessage, position: Int) {
                 // Load media chooser and remove the failed message from list.
                 if (adapterChat.isFailedMessage(message)) {
                     retryFailedMessage(message)
@@ -316,33 +358,93 @@ class ChatDetailActivity : AppCompatActivity() {
 
         adapterChat.setItemLongClickListener(object : ChatDetailAdapter.OnItemLongClickListener {
             override fun onUserMessageItemLongClick(message: UserMessage, position: Int) {
-                showMessageOptionsDialog(message, position)
+                if (adapterChat.selection_state) {
+                    if (adapterChat.isSelected(position)) {
+                        unSelectMsg(position)
+                        if (adapterChat.selectedCount() == 0) endSelection()
+                    } else selectMsg(position)
+                } else {
+                    startSelection()
+                    selectMsg(position)
+                }
             }
 
-            override fun onFileMessageItemLongClick(message: FileMessage) {}
-            override fun onAdminMessageItemLongClick(message: AdminMessage) {}
+            override fun onFileMessageItemLongClick(message: FileMessage, position: Int) {}
+            override fun onAdminMessageItemLongClick(message: AdminMessage, position: Int) {}
         })
 
         // Attachment Menu button
-        btDoc.setOnClickListener {  requestMedia() }
+        btDoc.setOnClickListener { requestMedia() }
+        btCam.setOnClickListener { requestMedia() }
+        btGallery.setOnClickListener { requestFile(INTENT_REQ_GALLERY) }
+        btAudio.setOnClickListener { requestMedia() }
+        btLoc.setOnClickListener { requestMedia() }
+        btContact.setOnClickListener { requestMedia() }
     }
 
 
+    /**User Chat Action**/
+    fun startSelection(){
+        setSelectionActBar(View.OnClickListener {
+                setNormalActBar()
+                endSelection()
+            })
+        adapterChat.selection_state = true
+    }
 
-    /*FUN*/
+    fun endSelection(){
+        setNormalActBar()
+        adapterChat.clearSelection()
+    }
+
+    fun setSelectionActBar(click: View.OnClickListener){
+        if (opt_menu == 1) return
+
+        opt_menu = 1
+        CLToolbar.visibility = View.GONE
+        toolbar.setNavigationOnClickListener(click)
+        invalidateOptionsMenu()
+    }
+
+    fun setNormalActBar(){
+        if (opt_menu == 0) return
+
+        opt_menu = 0
+        CLToolbar.visibility = View.VISIBLE
+        toolbar.setNavigationOnClickListener { onBackPressed() }
+        invalidateOptionsMenu()
+    }
+
+    fun selectMsg(pos: Int){
+        adapterChat.select(pos)
+        updateToolbarMenuCounter(adapterChat.selectedCount())
+    }
+
+    fun unSelectMsg(pos: Int){
+        adapterChat.unSelect(pos)
+        updateToolbarMenuCounter(adapterChat.selectedCount())
+    }
+
+    fun updateToolbarMenuCounter(count:Int){
+        toolbar.title = count.toString()
+        invalidateOptionsMenu()
+    }
+
+    /**Other Function**/
+
+    // Display Typing Indicator for other user
     private fun displayTyping(typingUsers: List<Member>) {
         if (typingUsers.isNotEmpty()) {
-            tvSub.visibility = View.VISIBLE
-
             tvSub.text = when {
                 channel?.members?.size == 2 -> "Typing . . ."
                 typingUsers.size == 1 -> typingUsers[0].nickname + " is typing"
                 typingUsers.size == 2 -> typingUsers[0].nickname + " " + typingUsers[1].nickname + " is typing"
                 else -> "Multiple users are typing"
             }
-        } else tvSub.visibility = View.INVISIBLE
+        } else tvSub.text = ""
     }
 
+    // Set Typing state
     fun stateTyping(typing: Boolean){
         if (channel == null) return
 
@@ -355,6 +457,7 @@ class ChatDetailActivity : AppCompatActivity() {
         }
     }
 
+    // Send Message in Channel
     fun sendMsg(msg:String){
         channel?.sendUserMessage(msg) { userMessage, e ->
             if (e != null) {
@@ -370,7 +473,8 @@ class ChatDetailActivity : AppCompatActivity() {
         }
     }
 
-    fun toggleMenu() {
+    // Toggle Attachment Menu
+    fun toggleAttachMenu() {
         val x = CLAttachMenu.measuredWidth - fabSend.width/2
         val y = CLAttachMenu.measuredHeight
         val endRadius = Math.hypot(CLAttachMenu.width.toDouble(), CLAttachMenu.height.toDouble())
@@ -402,12 +506,59 @@ class ChatDetailActivity : AppCompatActivity() {
         }
     }
 
+    private fun requestFile(code:Int){
+        if (!checkPermission()) return
+
+        val intent = Intent()
+
+        // Pick images
+        when(code){
+            INTENT_REQ_DOCUMENT -> intent.type = "image/*"
+            INTENT_REQ_CAMERA -> intent.type = "image/*"
+            INTENT_REQ_GALLERY -> intent.type = "image/*"
+            INTENT_REQ_AUDIO -> intent.type = "image/*"
+            INTENT_REQ_LOCATION -> intent.type = "image/*"
+            INTENT_REQ_CONTACT -> intent.type = "image/*"
+        }
+        intent.action = Intent.ACTION_GET_CONTENT
+
+        // Always show the chooser (if there are multiple options available)
+        startActivityForResult(Intent.createChooser(
+            intent, "Select ${
+                when(code){
+                    INTENT_REQ_DOCUMENT -> "Document"
+                    INTENT_REQ_CAMERA -> "Camera"
+                    INTENT_REQ_GALLERY -> "Image"
+                    INTENT_REQ_AUDIO -> "Audio"
+                    INTENT_REQ_LOCATION -> "Location"
+                    INTENT_REQ_CONTACT -> "Contact"
+                    else -> ""
+                }
+            }"),
+            INTENT_REQUEST_CHOOSE_MEDIA)
+
+        // Set this as false to maintain connection
+        // even when an external Activity is started.
+        SendBird.setAutoBackgroundDetection(false)
+
+    }
+
+    private fun checkPermission():Boolean{
+        if (ContextCompat.checkSelfPermission(
+                this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            != PackageManager.PERMISSION_GRANTED) {
+            requestStoragePermissions()
+            return false
+        }
+        return true
+    }
 
     /*MJDSHIFHIDYHOALJDMOAIDYOIDMJCHFYAUFEYCUFVTYDFNUYTNGFU^RBFYU*/
+
+    // Request Media Permission & get media
     private fun requestMedia() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
-            != PackageManager.PERMISSION_GRANTED
-        ) {
+            != PackageManager.PERMISSION_GRANTED) {
             // If storage permissions are not granted, request permissions at run-time,
             // as per < API 23 guidelines.
             requestStoragePermissions()
@@ -419,14 +570,14 @@ class ChatDetailActivity : AppCompatActivity() {
                 intent.type = "*/*"
                 val mimeTypes = arrayOf("image/*", "video/*")
                 intent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes)
-            } else {
-                intent.type = "image/* video/*"
-            }
+            } else intent.type = "image/* video/*"
+
 
             intent.action = Intent.ACTION_GET_CONTENT
 
             // Always show the chooser (if there are multiple options available)
-            startActivityForResult(Intent.createChooser(intent, "Select Media"), INTENT_REQUEST_CHOOSE_MEDIA)
+            startActivityForResult(Intent.createChooser(
+                intent, "Select Media"), INTENT_REQUEST_CHOOSE_MEDIA)
 
             // Set this as false to maintain connection
             // even when an external Activity is started.
@@ -434,11 +585,12 @@ class ChatDetailActivity : AppCompatActivity() {
         }
     }
 
+
+    // Request Storage Permission
     private fun requestStoragePermissions() {
         if (ActivityCompat.shouldShowRequestPermissionRationale(this,
                 Manifest.permission.WRITE_EXTERNAL_STORAGE
-            )
-        ) {
+            )) {
             // Provide an additional rationale to the user if the permission was not granted
             // and the user would benefit from additional context for the use of the permission.
             // For example if the user has previously denied the permission.
@@ -464,6 +616,7 @@ class ChatDetailActivity : AppCompatActivity() {
         }
     }
 
+    // Type File Message Clicked
     private fun onFileMessageClicked(message: FileMessage) {
         val type = message.type.toLowerCase()
 //        if (type.startsWith("image")) {
@@ -480,19 +633,19 @@ class ChatDetailActivity : AppCompatActivity() {
 //        }
     }
 
-    private fun sendFileWithThumbnail(uri: Uri) {
+    private fun sendFileImage(uri: Uri){
         if (channel == null) return
-
 
         // Specify two dimensions of thumbnails to generate
         val thumbnailSizes = arrayListOf<FileMessage.ThumbnailSize>()
         thumbnailSizes.add(FileMessage.ThumbnailSize(240, 240))
         thumbnailSizes.add(FileMessage.ThumbnailSize(320, 320))
 
-        val info = FileUtils.getFileInfo(this, uri)
+        val info = FileUtils2.getFileInfo(this, uri)
 
         if (info == null) {
-            Toast.makeText(this, "Extracting file information failed.", Toast.LENGTH_LONG).show()
+            Toast.makeText(this,
+                "Extracting file information failed.", Toast.LENGTH_LONG).show()
             return
         }
 
@@ -500,10 +653,11 @@ class ChatDetailActivity : AppCompatActivity() {
         val file = File(path)
         val name = file.name
         val mime = info["mime"] as String
-        val size = info["size"] as Int
+        val size: Int = info["size"] as Int
 
         if (path == "") {
-            Toast.makeText(this, "File must be located in local storage.", Toast.LENGTH_LONG).show()
+            Toast.makeText(this,
+                "File must be located in local storage.", Toast.LENGTH_LONG).show()
         } else {
             val progressHandler = object : BaseChannel.SendFileMessageWithProgressHandler {
                 override fun onProgress(bytesSent: Int, totalBytesSent: Int, totalBytesToSend: Int) {
@@ -516,7 +670,7 @@ class ChatDetailActivity : AppCompatActivity() {
 
                 override fun onSent(fileMessage: FileMessage, e: SendBirdException?) {
                     if (e != null) {
-                        HelperView.sLongToast(this@ChatDetailActivity, "" + e.code + ":" + e.message)
+                        PopUpUtils.sLongToast(this@ChatDetailActivity, "" + e.code + ":" + e.message)
                         adapterChat.markMessageFailed(fileMessage.requestId)
                         return
                     }
@@ -527,7 +681,8 @@ class ChatDetailActivity : AppCompatActivity() {
 
             // Send image with thumbnails in the specified dimensions
             val tempFileMessage =
-                channel?.sendFileMessage(file, name, mime, size, "", null, thumbnailSizes, progressHandler)
+                channel?.sendFileMessage(file, name, mime, size,
+                    "", null, thumbnailSizes, progressHandler)
 
             mFileProgressHandlerMap?.put(progressHandler, tempFileMessage!!)
 
@@ -536,20 +691,94 @@ class ChatDetailActivity : AppCompatActivity() {
         }
     }
 
-    private fun showMessageOptionsDialog(message: BaseMessage, position: Int) {
-        val options = arrayOf("Edit message", "Delete message")
+    private fun sendFileWithThumbnail(uri: Uri) {
+        if (channel == null) return
 
-//        val builder = AlertDialog.Builder(this)
-//        builder.setItems(options, DialogInterface.OnClickListener { dialog, which ->
-//            if (which == 0) {
-//                setState(STATE_EDIT, message, position)
-//            } else if (which == 1) {
-//                deleteMessage(message)
-//            }
-//        })
-//        builder.create().show()
+        // Specify two dimensions of thumbnails to generate
+        val thumbnailSizes = arrayListOf<FileMessage.ThumbnailSize>()
+        thumbnailSizes.add(FileMessage.ThumbnailSize(240, 240))
+        thumbnailSizes.add(FileMessage.ThumbnailSize(320, 320))
+
+        val info = FileUtils.getFileInfo(this, uri)
+
+        if (info == null) {
+            Toast.makeText(this,
+                "Extracting file information failed.", Toast.LENGTH_LONG).show()
+            return
+        }
+
+        val path = info["path"] as String
+        val file = File(path)
+        val name = file.name
+        val mime = info["mime"] as String
+        val size: Int = info["size"] as Int
+
+        if (path == "") {
+            Toast.makeText(this,
+                "File must be located in local storage.", Toast.LENGTH_LONG).show()
+        } else {
+            val progressHandler = object : BaseChannel.SendFileMessageWithProgressHandler {
+                override fun onProgress(bytesSent: Int, totalBytesSent: Int, totalBytesToSend: Int) {
+                    val fileMessage = mFileProgressHandlerMap?.get(this)
+                    if (fileMessage != null && totalBytesToSend > 0) {
+                        val percent = totalBytesSent * 100 / totalBytesToSend
+                        adapterChat.setFileProgressPercent(fileMessage, percent)
+                    }
+                }
+
+                override fun onSent(fileMessage: FileMessage, e: SendBirdException?) {
+                    if (e != null) {
+                        PopUpUtils.sLongToast(this@ChatDetailActivity, "" + e.code + ":" + e.message)
+                        adapterChat.markMessageFailed(fileMessage.requestId)
+                        return
+                    }
+
+                    adapterChat.markMessageSent(fileMessage)
+                }
+            }
+
+            // Send image with thumbnails in the specified dimensions
+            val tempFileMessage =
+                channel?.sendFileMessage(file, name, mime, size,
+                    "", null, thumbnailSizes, progressHandler)
+
+            mFileProgressHandlerMap?.put(progressHandler, tempFileMessage!!)
+
+            adapterChat.addTempFileMessageInfo(tempFileMessage!!, uri)
+            adapterChat.addMessage(tempFileMessage)
+        }
     }
 
+    // Delete all Selected Chat
+    private fun deleteSelectedChat() {
+        compositeDisposable.add (
+            Observable.fromIterable(adapterChat.getSelectedChat())
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribeWith(object : DisposableObserver<BaseMessage>() {
+                    override fun onComplete() {
+                        // Re-query message list
+                        endSelection()
+                        PopUpUtils.sLongToast(this@ChatDetailActivity,
+                            "Message Deleted")
+                    }
+
+                    override fun onNext(msg: BaseMessage) {
+                        channel!!.deleteMessage(msg) {
+                            if (it != null){
+                                it.printStackTrace()
+                                return@deleteMessage
+                            }
+                        }
+                    }
+
+                    override fun onError(e: Throwable) {
+                        e.printStackTrace()
+                    }
+
+                })
+        )
+    }
     private fun setState(state: Int, editingMessage: BaseMessage, position: Int) {
 //        when (state) {
 //            STATE_NORMAL -> {
@@ -624,20 +853,60 @@ class ChatDetailActivity : AppCompatActivity() {
 ////        })
 //    }
 
+    fun changeBackground(){
+        when(DataUtils.getRandomInt(1,6)){
+            1 -> rv.background = ContextCompat.getDrawable(this, R.drawable.background1)
+            2 -> rv.background = ContextCompat.getDrawable(this, R.drawable.background2)
+            3 -> rv.background = ContextCompat.getDrawable(this, R.drawable.background3)
+            4 -> rv.background = ContextCompat.getDrawable(this, R.drawable.background4)
+            5 -> rv.background = ContextCompat.getDrawable(this, R.drawable.background5)
+            6 -> rv.background = ContextCompat.getDrawable(this, R.color.white)
+        }
+    }
+
+
+    /**OVERRIDE**/
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        val inflater: MenuInflater = menuInflater
+        inflater.inflate(R.menu.channel_detail_menu, menu)
+        return super.onCreateOptionsMenu(menu)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        when(item.itemId){
+            R.id.mnDelete ->{
+                DialogUtils.showDialog2(this,
+                    "Delete Chat ?", "Delete",
+                    DialogInterface.OnClickListener{ dialog, _ ->
+                        deleteSelectedChat()
+                        dialog.dismiss()
+                    })
+                return true
+            }
+        }
+        return super.onOptionsItemSelected(item)
+    }
+
     override fun onBackPressed() {
-        if (CLAttachMenu!!.visibility == View.VISIBLE) toggleMenu()
-        else super.onBackPressed()
+        when {
+            adapterChat.selection_state -> {
+                setNormalActBar()
+                endSelection()
+            }
+            CLAttachMenu!!.visibility == View.VISIBLE -> toggleAttachMenu()
+            else -> super.onBackPressed()
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        if (CLAttachMenu.isVisible) toggleAttachMenu()
     }
 
     override fun onDestroy() {
         super.onDestroy()
         stateTyping(false)
         SendBird.removeChannelHandler(channel_url)
+        compositeDisposable.clear()
     }
-
-    override fun onPause() {
-        super.onPause()
-        if (CLAttachMenu.isVisible) toggleMenu()
-    }
-
 }

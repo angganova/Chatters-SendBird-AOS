@@ -1,5 +1,6 @@
 package com.fullstackdiv.chatters.controller.fragment.main
 
+import android.content.DialogInterface
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
@@ -14,11 +15,16 @@ import com.sendbird.android.*
 import kotlinx.android.synthetic.main.base_rv.*
 import com.sendbird.android.GroupChannel
 import com.fullstackdiv.chatters.controller.activity.MainActivity
-import com.fullstackdiv.chatters.helper.HelperView
+import com.fullstackdiv.chatters.helper.utils.PopUpUtils
 import com.sendbird.android.ConnectionManager
 import android.view.*
 import androidx.core.content.ContextCompat
-import kotlinx.android.synthetic.main.activity_main.*
+import com.fullstackdiv.chatters.helper.utils.DialogUtils
+import io.reactivex.Observable
+import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.disposables.CompositeDisposable
+import io.reactivex.observers.DisposableObserver
+import io.reactivex.schedulers.Schedulers
 
 
 /**
@@ -26,14 +32,14 @@ import kotlinx.android.synthetic.main.activity_main.*
  */
 
 class ChannelListFragment: Fragment(){
+    private val compositeDisposable = CompositeDisposable()
+
     private val CON_HANDLER_ID = "CON_HANDLER_ID"
     private val CH_HANDLER_ID = "CH_HANDLER_ID"
     private val CH_QUERY_LIMIT = 15
 
     lateinit var adapter : ChannelListAdapter
     lateinit var channelListQuery: GroupChannelListQuery
-
-    var selectedChannel: GroupChannel? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -46,28 +52,7 @@ class ChannelListFragment: Fragment(){
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
         adapter = ChannelListAdapter(activity!!, R.layout.item_channel_list)
-        adapter.load()
-
-        getChannel(CH_QUERY_LIMIT)
-    }
-
-    fun getChannel(limit:Int){
-        channelListQuery = GroupChannel.createMyGroupChannelListQuery()
-        channelListQuery.limit = limit
-        channelListQuery.next(GroupChannelListQuery.GroupChannelListQueryResultHandler { list, e ->
-            if (e != null) {
-                // Error.
-                pb.visibility = View.GONE
-                tvEmpty.text = getString(R.string.err_chat_list)
-                return@GroupChannelListQueryResultHandler
-            }else{
-                adapter.clearMap()
-                adapter.setChannel(list)
-                if (activity != null && isAdded) setBaseView()
-            }
-        })
     }
 
     fun setBaseView(){
@@ -79,10 +64,12 @@ class ChannelListFragment: Fragment(){
 
             adapter.setOnItemClickListener(object : ChannelListAdapter.OnItemClickListener {
                 override fun onItemClick(channel: GroupChannel, position: Int) {
-
                     if (adapter.selection_state){
-                        if (adapter.isSelected(position)) unSelectChannel(position)
-                        else selectChannel(position)
+                            if (adapter.isSelected(position)) {
+                                unSelectChannel(position)
+                                if (adapter.selectedCount() == 0) endSelection()
+                            } else selectChannel(position)
+
                     }else {
                         val intent = Intent(activity!!, ChatDetailActivity::class.java)
                         intent.putExtra("url", channel.url)
@@ -93,10 +80,15 @@ class ChannelListFragment: Fragment(){
 
             adapter.setOnItemLongClickListener(object : ChannelListAdapter.OnItemLongClickListener {
                 override fun onItemLongClick(channel: GroupChannel, position: Int) {
-                    if (adapter.selection_state){
-                        (activity as MainActivity).setNormalActBar()
-                        adapter.clearSelection()
-                    }else if ((activity as MainActivity).setActBar(1)) selectChannel(position)
+                    if (adapter.selection_state) {
+                        if (adapter.isSelected(position)) {
+                            unSelectChannel(position)
+                            if (adapter.selectedCount() == 0) endSelection()
+                        } else selectChannel(position)
+                    } else {
+                        startSelection()
+                        selectChannel(position)
+                    }
                 }
             })
 
@@ -114,15 +106,6 @@ class ChannelListFragment: Fragment(){
         setChannelHandler()
     }
 
-    fun selectChannel(pos: Int){
-        adapter.select(pos)
-        (activity as MainActivity).toolbar.title = adapter.selectedCount().toString()
-    }
-
-    fun unSelectChannel(pos: Int){
-        adapter.unSelect(pos)
-        (activity as MainActivity).toolbar.title = adapter.selectedCount().toString()
-    }
 
     fun setChannelHandler(){
         SendBird.addChannelHandler(CH_HANDLER_ID, object : SendBird.ChannelHandler() {
@@ -144,6 +127,28 @@ class ChannelListFragment: Fragment(){
         getChannel(CH_QUERY_LIMIT)
     }
 
+    fun getChannel(limit:Int){
+        channelListQuery = GroupChannel.createMyGroupChannelListQuery()
+        channelListQuery.limit = limit
+        channelListQuery.next(GroupChannelListQuery.GroupChannelListQueryResultHandler { list, e ->
+            if (e != null) {
+                // Error.
+                pb.visibility = View.GONE
+                tvEmpty.text = getString(R.string.err_chat_list)
+                return@GroupChannelListQueryResultHandler
+            }else{
+                adapter.clearMap()
+
+                for (channel in list) {
+                    if(channel.memberCount>1) adapter.addChannel(channel)
+                }
+
+                if (activity != null && isAdded) setBaseView()
+            }
+        })
+    }
+
+
     private fun loadNextChannelList() {
         channelListQuery.next(GroupChannelListQuery.GroupChannelListQueryResultHandler { list, e ->
             if (e != null) {
@@ -153,21 +158,61 @@ class ChannelListFragment: Fragment(){
             }
 
             for (channel in list) {
-                adapter.addChannel(channel)
+                if(channel.memberCount>1) adapter.addChannel(channel)
             }
         })
     }
 
-    private fun leaveChannel(channel: GroupChannel) {
-        channel.leave(GroupChannel.GroupChannelLeaveHandler { e ->
-            if (e != null) {
-                // Error!
-                return@GroupChannelLeaveHandler
-            }
+    private fun togglePNSelectedChannel(on: Boolean) {
+        compositeDisposable.add (
+            Observable.fromIterable(adapter.getSelectedChannels())
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribeWith(object : DisposableObserver<GroupChannel>() {
+                    override fun onComplete() {
+                        PopUpUtils.sLongToast(activity!!,
+                            if (on) "Push notifications have been turned ON"
+                            else "Push notifications have been turned OFF")
+                    }
 
-            // Re-query message list
-            getChannel(CH_QUERY_LIMIT)
-        })
+                    override fun onNext(channel: GroupChannel) {
+                        setChannelPushPreferences(channel, on)
+                    }
+
+                    override fun onError(e: Throwable) {
+                        e.printStackTrace()
+                    }
+
+                })
+        )
+    }
+
+    private fun leaveSelectedChannel() {
+        compositeDisposable.add (
+            Observable.fromIterable(adapter.getSelectedChannels())
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribeWith(object : DisposableObserver<GroupChannel>() {
+                    override fun onComplete() {
+                        // Re-query message list
+                        getChannel(CH_QUERY_LIMIT)
+                    }
+
+                    override fun onNext(channel: GroupChannel) {
+                        channel.leave(GroupChannel.GroupChannelLeaveHandler { e ->
+                            if (e != null) {
+                                // Error!
+                                return@GroupChannelLeaveHandler
+                            }
+                        })
+                    }
+
+                    override fun onError(e: Throwable) {
+                        e.printStackTrace()
+                    }
+
+                })
+        )
     }
 
     // Push Notification Setting
@@ -176,25 +221,54 @@ class ChannelListFragment: Fragment(){
         channel.setPushPreference(on, GroupChannel.GroupChannelSetPushPreferenceHandler { e ->
             if (e != null) {
                 e.printStackTrace()
-                HelperView.sLongToast(activity!!, "Error: " + e.message)
+                PopUpUtils.sLongToast(activity!!, "Error: " + e.message)
                 return@GroupChannelSetPushPreferenceHandler
             }
-
-            val toast = if (on) "Push notifications have been turned ON"
-            else "Push notifications have been turned OFF"
-
-            HelperView.sLongToast(activity!!, toast)
         })
     }
 
+
+    /**User Action**/
+    fun startSelection(){
+        (activity as MainActivity).setSelectionActBar(
+            View.OnClickListener {
+                (activity as MainActivity).setNormalActBar()
+                endSelection()
+            })
+        adapter.selection_state = true
+    }
+
+    fun endSelection(){
+        (activity as MainActivity).setNormalActBar()
+        adapter.clearSelection()
+    }
+
+    fun selectChannel(pos: Int){
+        adapter.select(pos)
+        (activity as MainActivity).updateToolbarMenuCounter(adapter.selectedCount())
+    }
+
+    fun unSelectChannel(pos: Int){
+        adapter.unSelect(pos)
+        (activity as MainActivity).updateToolbarMenuCounter(adapter.selectedCount())
+    }
+
+
+    /**OVERRIDE**/
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
         menu.clear()
         if ((activity as MainActivity).opt_menu == 1){
             inflater.inflate(R.menu.channel_menu, menu)
-            if (selectedChannel != null && !selectedChannel!!.isPushEnabled){
+            if (!adapter.selection_state_on){
                 menu.findItem(R.id.mnPN).icon =
-                    ContextCompat.getDrawable(activity!!, R.drawable.ic_pn_off_white)
+                    ContextCompat.getDrawable(activity!!,
+                        R.drawable.ic_pn_off_white)
+            }else{
+                menu.findItem(R.id.mnPN).icon =
+                    ContextCompat.getDrawable(activity!!,
+                        R.drawable.ic_pn_on_white)
             }
+
             return super.onCreateOptionsMenu(menu, inflater)
         }
     }
@@ -202,25 +276,33 @@ class ChannelListFragment: Fragment(){
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when(item.itemId){
             R.id.mnDelete ->{
-                if (selectedChannel != null){
-                    leaveChannel(selectedChannel!!)
-                    selectedChannel = null
-                }
-
-                (activity as MainActivity).setNormalActBar()
+                DialogUtils.showDialog2(activity!!,
+                    "Delete Chat ?", "Delete",
+                    DialogInterface.OnClickListener{dialog, _ ->
+                        leaveSelectedChannel()
+                        endSelection()
+                        dialog.dismiss()
+                    })
                 return true
             }
             R.id.mnPN ->{
-                val pushCurrentlyEnabled = selectedChannel!!.isPushEnabled
-
-                if (pushCurrentlyEnabled) HelperView.sLongToast(
-                    activity!!, "Push notifications turned OFF")
-                else HelperView.sLongToast(
-                    activity!!, "Push notifications turned ON")
-
-                setChannelPushPreferences(selectedChannel!!, !pushCurrentlyEnabled)
-                (activity as MainActivity).setNormalActBar()
-
+                if (!adapter.selection_state_on){
+                    DialogUtils.showDialog2(activity!!,
+                        "Turn On Notification?", "Turn On",
+                        DialogInterface.OnClickListener{dialog, _ ->
+                            togglePNSelectedChannel(true)
+                            endSelection()
+                            dialog.dismiss()
+                        })
+                }else{
+                    DialogUtils.showDialog2(activity!!,
+                        "Turn Off Notification?", "Turn Off",
+                        DialogInterface.OnClickListener{dialog, _ ->
+                            togglePNSelectedChannel(false)
+                            endSelection()
+                            dialog.dismiss()
+                        })
+                }
                 return true
             }
         }
@@ -248,6 +330,14 @@ class ChannelListFragment: Fragment(){
             }
         )
 
+        adapter.load()
+        getChannel(CH_QUERY_LIMIT)
+
         setChannelHandler()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        compositeDisposable.clear()
     }
 }

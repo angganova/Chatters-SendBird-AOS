@@ -22,6 +22,7 @@
         <item name="drawerArrowStyle">@style/DrawerArrowStyle</item>
 
         <item name="android:itemBackground">@color/white</item>
+        <item name="android:actionOverflowButtonStyle">@style/MyActionButtonOverflow</item>
     </style>
 
     <style name="AvenirTextViewStyle" parent="android:Widget.TextView">
@@ -60,6 +61,12 @@
     <style name="DrawerArrowStyle" parent="@style/Widget.AppCompat.DrawerArrowToggle">
         <item name="spinBars">true</item>
         <item name="color">@android:color/white</item>
+    </style>
+
+
+    <style name="MyActionButtonOverflow" parent="android:style/Widget.Holo.ActionButton.Overflow">
+        <item name="android:src">@drawable/ic_more_dots</item>
+        <item name="android:color">@color/white</item>
     </style>
 
     <style name="dialogActivity" parent="Theme.AppCompat.Light.DarkActionBar">

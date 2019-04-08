@@ -1,4 +1,4 @@
-package com.fullstackdiv.chatters.helper
+package com.fullstackdiv.chatters.helper.utils
 
 import android.content.Context
 import android.widget.Toast
@@ -8,7 +8,7 @@ import android.widget.Toast
  */
 
 
-object HelperView {
+object PopUpUtils {
 
     private var toast: Toast? = null
 

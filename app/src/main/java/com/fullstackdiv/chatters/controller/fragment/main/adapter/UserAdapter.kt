@@ -10,8 +10,8 @@ import android.widget.PopupMenu
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.fullstackdiv.chatters.R
-import com.fullstackdiv.chatters.helper.HelperData
-import com.fullstackdiv.chatters.helper.HelperView
+import com.fullstackdiv.chatters.helper.utils.DataUtils
+import com.fullstackdiv.chatters.helper.utils.PopUpUtils
 import com.sendbird.android.SendBird
 import com.sendbird.android.User
 import com.squareup.picasso.Callback
@@ -127,7 +127,7 @@ class UserAdapter(val context: Context, val data: MutableList<User>, val rowLayo
     }
 
     fun getLastSeen(t: Long): String{
-        return "Last seen at ${HelperData.getDateFromUnix(t)}"
+        return "Last seen at ${DataUtils.getDateFromUnix(t)}"
     }
 
     // User Action
@@ -143,8 +143,8 @@ class UserAdapter(val context: Context, val data: MutableList<User>, val rowLayo
                     for (x in list) {
                         string += "${x.nickname}, "
                     }
-                    HelperView.sShortToast(context, "$string Added")
-                }else HelperView.sShortToast(context, "${list[0].nickname} Added")
+                    PopUpUtils.sShortToast(context, "$string Added")
+                }else PopUpUtils.sShortToast(context, "${list[0].nickname} Added")
             }
         }
     }
@@ -158,7 +158,7 @@ class UserAdapter(val context: Context, val data: MutableList<User>, val rowLayo
             } else {
                 data.removeAt(pos)
                 notifyItemRemoved(pos)
-                HelperView.sShortToast(context, "Friends deleted")
+                PopUpUtils.sShortToast(context, "Friends deleted")
             }
         }
     }
