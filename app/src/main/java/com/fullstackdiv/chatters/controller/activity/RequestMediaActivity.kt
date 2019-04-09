@@ -7,6 +7,7 @@ import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.provider.ContactsContract
+import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.view.Menu
 import android.view.MenuInflater
@@ -100,6 +101,7 @@ class RequestMediaActivity : AppCompatActivity() {
                     setBaseView()
                 }
             }
+
             else -> finish()
         }
     }
@@ -170,10 +172,10 @@ class RequestMediaActivity : AppCompatActivity() {
         when(type.toLowerCase()){
             TYPE_IMAGE -> {
                 val uri = android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI
-                val projection = arrayOf(MediaStore.MediaColumns.DATA, MediaStore.Images.Media.BUCKET_DISPLAY_NAME)
+                val projection = arrayOf(MediaStore.MediaColumns.DATA)
 
-                cursor = contentResolver.query(
-                    uri, projection, null, null, MediaStore.MediaColumns.DATE_ADDED + " DESC")
+                cursor = contentResolver.query(uri, projection, null, null,
+                    MediaStore.MediaColumns.DATE_ADDED + " DESC")
 
                 val column_index_data = cursor!!.getColumnIndexOrThrow(MediaStore.MediaColumns.DATA)
 
@@ -189,30 +191,11 @@ class RequestMediaActivity : AppCompatActivity() {
             TYPE_CONTACT -> {
                 cursor = contentResolver.query(
                     ContactsContract.Contacts.CONTENT_URI,null, null, null,
-                    null)
+                    ContactsContract.Contacts.DISPLAY_NAME)
 
                 while (cursor.moveToNext()){
                     val media = MediaDataModel()
-//
-//                    val contactId = cursor.getString(cursor.getColumnIndex(ContactsContract.Contacts.NAME_RAW_CONTACT_ID))
-//                    val phones = contentResolver.query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-//                                        null,
-//                                        ContactsContract.CommonDataKinds.Phone.CONTACT_ID + " = " + contactId,
-//                                        null,
-//                                        null)
-//                    if (phones != null) {
-//                            while (phones.moveToNext()) {
-//                                media.subtitle = phones.getString(phones.getColumnIndex(
-//                                    ContactsContract.CommonDataKinds.Phone.NUMBER))
-//                            }
-//
-//                        media.title = cursor.getString(cursor.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME))
-//                        media.type = type
-//                        listData.add(media)
-//                        phones.close()
-//                    }
-
-                    media.subtitle = ""
+                    media.id = cursor.getString(cursor.getColumnIndex(ContactsContract.Contacts.NAME_RAW_CONTACT_ID))
                     media.title = cursor.getString(cursor.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME))
                     media.type = type
                     listData.add(media)
@@ -220,15 +203,35 @@ class RequestMediaActivity : AppCompatActivity() {
             }
 
             else -> cursor = contentResolver.query(
-                ContactsContract.Contacts.CONTENT_URI,null, null, null, null)
+                ContactsContract.Contacts.CONTENT_URI,
+                null, null, null, null)
         }
 
         cursor.close()
 
         println("XXXASDF ${listData.size}")
+        for (x in listData){
+            println("XXXASDF ${x.title}")
+        }
+
         return listData
     }
 
+    fun getContactsData(id:String): String{
+        var phoneNumber = ""
+        val phones = contentResolver.query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI, null,
+            ContactsContract.CommonDataKinds.Phone.CONTACT_ID + " = " + id,
+            null, null)
+        if (phones != null) {
+            while (phones.moveToNext()) {
+                phoneNumber = phones.getString(phones.getColumnIndex(
+                    ContactsContract.CommonDataKinds.Phone.NUMBER))
+            }
+            phones.close()
+        }
+
+        return phoneNumber
+    }
 
 
     /**User Action**/

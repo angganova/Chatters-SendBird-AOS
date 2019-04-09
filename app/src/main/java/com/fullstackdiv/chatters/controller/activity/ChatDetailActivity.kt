@@ -405,14 +405,14 @@ class ChatDetailActivity : AppCompatActivity() {
 
         val attachmentIntent = Intent(this, RequestMediaActivity::class.java)
         // Attachment Menu button
-        btDoc.setOnClickListener { requestMedia() }
-        btCam.setOnClickListener { requestMedia() }
+        btDoc.setOnClickListener {requestMedia(0) }
+        btCam.setOnClickListener { requestMedia(0) }
         btGallery.setOnClickListener {
             attachmentIntent.putExtra("type", "Images")
             startActivity(attachmentIntent)
         }
-        btAudio.setOnClickListener { requestMedia() }
-        btLoc.setOnClickListener { requestMedia() }
+        btAudio.setOnClickListener { requestMedia(1) }
+        btLoc.setOnClickListener { requestMedia(0) }
         btContact.setOnClickListener {
             attachmentIntent.putExtra("type", "Contacts")
             startActivity(attachmentIntent)
@@ -609,7 +609,7 @@ class ChatDetailActivity : AppCompatActivity() {
     /*MJDSHIFHIDYHOALJDMOAIDYOIDMJCHFYAUFEYCUFVTYDFNUYTNGFU^RBFYU*/
 
     // Request Media Permission & get media
-    private fun requestMedia() {
+    private fun requestMedia(type:Int) {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
             != PackageManager.PERMISSION_GRANTED) {
             // If storage permissions are not granted, request permissions at run-time,
@@ -618,13 +618,35 @@ class ChatDetailActivity : AppCompatActivity() {
         } else {
             val intent = Intent()
 
-            // Pick images or videos
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-                intent.type = "*/*"
-                val mimeTypes = arrayOf("image/*", "video/*")
-                intent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes)
-            } else intent.type = "image/* video/*"
+            val mtDocs = arrayOf(
+                "application/msword",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // .doc & .docx
+                "application/vnd.ms-powerpoint",
+                "application/vnd.openxmlformats-officedocument.presentationml.presentation", // .ppt & .pptx
+                "application/vnd.ms-excel",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // .xls & .xlsx
+                "text/plain",
+                "application/pdf",
+                "application/zip"
+            )
 
+            val mtGallery = arrayOf("image/*", "video/*")
+
+            intent.type = when(type){
+                0 -> "*/*"
+//                1 -> "audio/*" //Camera
+//                2 -> "video/*" //Gallery
+                1 -> "audio/*" //Audio
+//                2 -> "video/*" //Location
+//                2 -> "video/*" //Contact
+                else -> ""
+            }
+
+            intent.putExtra(Intent.EXTRA_MIME_TYPES, when(type){
+                0 -> mtDocs
+                1-> null
+                else -> mtGallery
+            })
 
             intent.action = Intent.ACTION_GET_CONTENT
 

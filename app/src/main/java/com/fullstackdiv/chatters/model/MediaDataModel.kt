@@ -11,6 +11,9 @@ class MediaDataModel {
     @SerializedName("uri")
     @Expose
     var uri: String? = null
+    @SerializedName("id")
+    @Expose
+    var id: String? = null
     @SerializedName("title")
     @Expose
     var title: String? = null

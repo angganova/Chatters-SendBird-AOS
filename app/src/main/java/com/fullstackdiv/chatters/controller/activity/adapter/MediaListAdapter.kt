@@ -77,7 +77,6 @@ class MediaListAdapter(val mContext: Context, val data: List<MediaDataModel>) :
 
     inner class ContactViewHolder(view: View) : RecyclerView.ViewHolder(view){
         var tvTitle: TextView = view.findViewById(R.id.tvTitle)
-        var tvSubtitle: TextView = view.findViewById(R.id.tvSubtitle)
         var ivSelected: ImageView = view.findViewById(R.id.ivSelected)
         var vSelected: View = view.findViewById(R.id.vSelected)
 
@@ -85,7 +84,6 @@ class MediaListAdapter(val mContext: Context, val data: List<MediaDataModel>) :
                      clickListener: OnItemClickListener?,
                      longClickListener: OnItemLongClickListener?){
             tvTitle.text = media.title
-            tvSubtitle.text = media.subtitle
 
             if (media.selected) {
                 ivSelected.visibility = View.VISIBLE
